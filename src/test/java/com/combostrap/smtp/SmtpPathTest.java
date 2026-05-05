@@ -1,7 +1,8 @@
 package com.combostrap.smtp;
 
-import org.junit.Assert;
-import org.junit.Test;
+
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class SmtpPathTest {
 
@@ -14,8 +15,8 @@ public class SmtpPathTest {
     String route = "@hosta,@hostb";
     String actualPath = route + ":" + mailBox;
     SmtpPath path = SmtpPath.of("<" + actualPath + ">");
-    Assert.assertEquals(mailBox, path.getMailBox());
-    Assert.assertEquals(route, path.getRoute());
+    Assertions.assertEquals(mailBox, path.getMailBox());
+    Assertions.assertEquals(route, path.getRoute());
 
   }
 
@@ -24,7 +25,7 @@ public class SmtpPathTest {
 
     String mailBox = "user@site";
     SmtpPath path = SmtpPath.of("<" + mailBox + ">");
-    Assert.assertEquals(mailBox, path.getMailBox());
+    Assertions.assertEquals(mailBox, path.getMailBox());
 
   }
 
@@ -35,7 +36,7 @@ public class SmtpPathTest {
      * An empty path is used when returning a bounce <>
      */
     SmtpPath path = SmtpPath.empty();
-    Assert.assertEquals("", path.getMailBox());
+    Assertions.assertEquals("", path.getMailBox());
   }
 
   @Test
@@ -53,7 +54,7 @@ public class SmtpPathTest {
 
     // should not throw
     SmtpPath smtpPath = SmtpPath.of("<" + SmtpPostMaster.POSTMASTER + ">");
-    Assert.assertEquals(SmtpPostMaster.POSTMASTER, smtpPath.getMailBox());
+    Assertions.assertEquals(SmtpPostMaster.POSTMASTER, smtpPath.getMailBox());
 
   }
 

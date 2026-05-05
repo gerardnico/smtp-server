@@ -1,6 +1,7 @@
 package com.combostrap.dns;
 
-import net.bytle.exception.IllegalStructure;
+import com.combostrap.type.DnsCastException;
+import com.combostrap.type.DnsName;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -24,7 +25,7 @@ class DnsBlockListQueryHelperTest {
     XBillDnsClient dnsClient = XBillDnsClient.builder().build();
     for (DnsBlockListQueryHelper dnsBlockListQueryHelper: blockListQueryHelpers) {
       Set<DnsIp> dnsIp = dnsClient.resolveA(dnsBlockListQueryHelper.getDnsNameToQuery());
-      if(dnsIp.size()==0){
+      if(dnsIp.isEmpty()){
         System.out.println("Not blocked");
         continue;
       }
@@ -39,10 +40,10 @@ class DnsBlockListQueryHelperTest {
   }
 
   @Test
-  void domainBlockTest() throws DnsException, DnsNotFoundException {
+  void domainBlockTest() throws DnsException, DnsNotFoundException, DnsCastException {
 
     List<DnsBlockListQueryHelper> queryHelpers = DnsBlockListQueryHelper
-      .forDomain("eraldy.com")
+      .forDomain(DnsName.create("eraldy.com"))
       .build();
     this.assertNotBlocked(queryHelpers);
 

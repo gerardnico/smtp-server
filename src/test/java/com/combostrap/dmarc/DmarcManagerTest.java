@@ -1,11 +1,10 @@
 package com.combostrap.dmarc;
 
+import com.combostrap.email.BMailMimeMessage;
+import com.combostrap.smtp.milter.DmarcMilter;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import jakarta.mail.MessagingException;
-import net.bytle.email.BMailMimeMessage;
-import net.bytle.exception.IllegalStructure;
-import net.bytle.smtp.milter.DmarcMilter;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,7 +21,7 @@ public class DmarcManagerTest {
   public static final String DMARC_RESSOURCE_ROOT = "/dmarc";
 
   @Test
-  public void zipDmarcFromEmlTest() throws IllegalStructure, MessagingException, IOException {
+  public void zipDmarcFromEmlTest() throws MessagingException, IOException, DmarcIllegalStructure {
 
     String result = getResourceAsString(DMARC_RESSOURCE_ROOT + "/dmarc-zip.eml");
     BMailMimeMessage fromEml = BMailMimeMessage.createFromEml(result);
@@ -34,7 +33,7 @@ public class DmarcManagerTest {
   }
 
   @Test
-  public void gzipDmarcFromEmlTest() throws IllegalStructure, MessagingException, IOException {
+  public void gzipDmarcFromEmlTest() throws MessagingException, IOException, DmarcIllegalStructure {
 
     String result = getResourceAsString(DMARC_RESSOURCE_ROOT + "/dmarc-gzip.eml");
     BMailMimeMessage fromEml = BMailMimeMessage.createFromEml(result);
@@ -46,7 +45,7 @@ public class DmarcManagerTest {
   }
 
   @Test
-  public void zipDmarcFromJsonEmailTest() throws IllegalStructure {
+  public void zipDmarcFromJsonEmailTest() throws DmarcIllegalStructure {
 
     String result = getResourceAsString(DMARC_RESSOURCE_ROOT + "/dmarc-zip.eml.json");
     JsonObject jsonObject = new JsonObject(result);
@@ -58,7 +57,7 @@ public class DmarcManagerTest {
   }
 
   @Test
-  public void gzipDmarcFromJsonEmailTest() throws IllegalStructure {
+  public void gzipDmarcFromJsonEmailTest() throws DmarcIllegalStructure {
 
     String result = getResourceAsString(DMARC_RESSOURCE_ROOT + "/dmarc-gzip.eml.json");
     JsonObject jsonObject = new JsonObject(result);
@@ -81,7 +80,7 @@ public class DmarcManagerTest {
     String xml = getResourceAsString(DMARC_RESSOURCE_ROOT + "/dmarc.xml");
     DmarcReport dmarcReport = DmarcReport.create("dmarc", xml);
     String fileName = DmarcMilter.getRemoteUniquePath(dmarcReport.getFeedbackObject());
-    Assertions.assertEquals(fileName, "2023/2023-09/2023-09-17T02:00:00!2023-09-18T01:59:59!google.com!bytle.net.xml");
+    Assertions.assertEquals("2023/2023-09/2023-09-17T02:00:00!2023-09-18T01:59:59!google.com!bytle.net.xml", fileName);
   }
 
 }

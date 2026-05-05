@@ -94,7 +94,7 @@ public class SmtpVerticle extends AbstractVerticle {
                                 .setPort(smtpService.getListeningPort())
                                 .setKeyCertOptions(pemKeyCertOptions)
                                 .setSsl(smtpService.getIsTlsEnabled())
-                                // SNI returns the certificate for the indicated server name in a SSL connection
+                                // SNI returns the certificate for the indicated server name in an SSL connection
                                 .setSni(smtpService.getIsSniEnabled())
                                 .setIdleTimeout(smtpServer.getIdleTimeoutSecond())
                                 .setSslHandshakeTimeout(smtpServer.getHandShakeTimeoutSecond());
@@ -111,7 +111,10 @@ public class SmtpVerticle extends AbstractVerticle {
                      * Promise handling
                      */
                     return Future.join(netServers)
-                            .recover(err -> Future.failedFuture(new RuntimeException("Net server could not be started", err)))
+                            .onFailure(err -> {
+                                LOGGER.log(Level.SEVERE,"Smtp server could not be started. Error: "+err.getMessage(), err);
+                                this.handleVerticleFailure(verticlePromise, err);
+                            })
                             .compose(result -> {
 
                                 List<NetServer> netServersList;

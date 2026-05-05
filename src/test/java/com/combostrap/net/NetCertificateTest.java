@@ -7,7 +7,7 @@ import io.vertx.core.net.NetSocket;
 import io.vertx.core.net.impl.KeyStoreHelper;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
-import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -42,7 +42,7 @@ public class NetCertificateTest {
         }
       }
     });
-    Assertions.assertThat(testContext.awaitCompletion(5, TimeUnit.SECONDS)).isTrue();
+    Assertions.assertTrue(testContext.awaitCompletion(5, TimeUnit.SECONDS));
     if (testContext.failed()) {
       throw testContext.causeOfFailure();
     }
@@ -63,7 +63,7 @@ public class NetCertificateTest {
           certs = ns.peerCertificates();
           for (Certificate cert : certs) {
             String name = cnOf(cert);
-            Assertions.assertThat(name).isNotNull();
+            Assertions.assertNotNull(name);
             System.out.println(name);
           }
           testContext.completeNow();
@@ -72,7 +72,7 @@ public class NetCertificateTest {
         }
       }
     });
-    Assertions.assertThat(testContext.awaitCompletion(5, TimeUnit.SECONDS)).isTrue();
+    Assertions.assertTrue(testContext.awaitCompletion(5, TimeUnit.SECONDS));
     if (testContext.failed()) {
       throw testContext.causeOfFailure();
     }
@@ -106,7 +106,7 @@ public class NetCertificateTest {
         });
       }
     });
-    Assertions.assertThat(testContext.awaitCompletion(200, TimeUnit.SECONDS)).isTrue();
+    Assertions.assertTrue(testContext.awaitCompletion(200, TimeUnit.SECONDS));
     if (testContext.failed()) {
       throw testContext.causeOfFailure();
     }
