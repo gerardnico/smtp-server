@@ -1,0 +1,84 @@
+Delivered-To: dmarc@combostrap.com
+Received: by 2002:a05:6839:7b15:b0:6e7:9ecd:ca64 with SMTP id mr21csp794105nkc;
+        Thu, 20 Apr 2023 21:00:10 -0700 (PDT)
+X-Google-Smtp-Source: AKy350ZtDlfHi/GxiPdRXqGE/1Et1DKqSMMYfmkhiqdX3GJvG4fwtyBx1aY5o5rkLmCU4iGJfEOZ
+X-Received: by 2002:a05:6a20:8f09:b0:f2:4b7e:f4bb with SMTP id b9-20020a056a208f0900b000f24b7ef4bbmr2651746pzk.37.1682049609647;
+        Thu, 20 Apr 2023 21:00:09 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1682049609; cv=none;
+        d=google.com; s=arc-20160816;
+        b=YMeSnEgX6A1IxN+lgSMkJw0q2VGH8BJ2fV3rrttqSu6IkWBTRylA7mGKHOmD4Us3uu
+         n7dkUnc3PAj8kHOXFxb9xE5i5joPIxdaiUe10j9LZwPVU265AXSZA7XfOl00F77ClgG9
+         +j8A4+um/yrFkZWXKWgQSh3UAs+7HolYeiuydPB5lY2TLDgtJ9ujYa+RPXd7r9J/f62x
+         6PVE47no5jk6CE/9CZ8p0qjIWB6/rLAqZUsXZGp81UkykdehcxLCPW4xYLKJzQXFnAPy
+         j2YuDIJ0mf0iZW9SxFIux5njfIQCZKBLSH5PfQ99ag/PxQHTsMVm3mzRcwL9UT9/Se8D
+         YGZA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20160816;
+        h=subject:date:to:sender:from:mime-version:message-id;
+        bh=+0BridwFdS9UGCkDuv82LGLgGFZ2hKLUNUnYsHbOPW8=;
+        b=RP0ZpclX7vcDHQk+I0GBiBVNyvfJh8HWxOFt+cSvT4r79nwtzEIoqj5Iw4FEiHkYiR
+         ugOMqY8NjTgXSwzr3nPEVPRgRIikbtUt6jen3cgSyAAhc/tBd95R87B/pikmT0ce4tuT
+         P4T3ohX/3QM9QvoV+J3lxjvdHgwnihTWoEnn+XmDLNDNsbbZ7Dci65buPUeHIVGF0rg/
+         tCojr3tfuYGF2S/tkequHPicdxj3KYX6BUXUDhft45kvnLGSldgQBXTaIghEpy4nLndl
+         89Hdsiq92h/2BeTbymQq42TgGoB24n7P+shM90hqiKYUEpDdfyidVQVnvKu8pUWF7sk4
+         NghA==
+ARC-Authentication-Results: i=1; mx.google.com;
+       spf=none (google.com: esa1.hc4958-69.iphmx.com does not designate permitted sender hosts) smtp.mailfrom=MAILER-DAEMON@esa1.hc4958-69.iphmx.com;
+       dmarc=fail (p=NONE sp=NONE dis=NONE) header.from=iphmx.com
+Return-Path: <MAILER-DAEMON@esa1.hc4958-69.iphmx.com>
+Received: from esa.hc4958-69.iphmx.com (esa.hc4958-69.iphmx.com. [68.232.147.131])
+        by mx.google.com with ESMTPS id i17-20020a63d451000000b005133c334fe0si3435433pgj.192.2023.04.20.21.00.09
+        for <dmarc@combostrap.com>
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Thu, 20 Apr 2023 21:00:09 -0700 (PDT)
+Received-SPF: none (google.com: esa1.hc4958-69.iphmx.com does not designate permitted sender hosts) client-ip=68.232.147.131;
+Authentication-Results: mx.google.com;
+       spf=none (google.com: esa1.hc4958-69.iphmx.com does not designate permitted sender hosts) smtp.mailfrom=MAILER-DAEMON@esa1.hc4958-69.iphmx.com;
+       dmarc=fail (p=NONE sp=NONE dis=NONE) header.from=iphmx.com
+Message-ID: <64420a49.630a0220.61d80.cfa5SMTPIN_ADDED_BROKEN@mx.google.com>
+X-Google-Original-Message-ID: fb445d$f68c6d6=11984aa118f59857@esa1.hc4958-69.iphmx.com
+Received: from localhost by esa1.hc4958-69.iphmx.com;
+  21 Apr 2023 00:00:08 -0400
+X-MGA-submission: =?us-ascii?q?MDFU1jJ9OEpzetai0R65uHQ1HTU7xZlGC5YxR5?=
+ =?us-ascii?q?aTEjIdXM7JmZ/mns1lMwN0nXmuHYyCxc7D6pnrwUN/I+Ly+BawLNpAeK?=
+ =?us-ascii?q?2yr3oFMYLWoK2WqXIvB1gmmoK1kJ37gihuyA8=3D?=
+Content-Type: multipart/mixed; boundary="===============4874384699657112906=="
+MIME-Version: 1.0
+From: MAILER-DAEMON@esa1.hc4958-69.iphmx.com
+Sender: MAILER-DAEMON@esa1.hc4958-69.iphmx.com
+To: dmarc@combostrap.com
+Date: 21 Apr 2023 00:00:08 -0400
+Subject: Report Domain: combostrap.com Submitter: esa1.hc4958-69.iphmx.com
+ Report-ID: <fb445d$f68c6d6=11984aa118f59857@esa1.hc4958-69.iphmx.com>
+
+--===============4874384699657112906==
+Content-Type: multipart/alternative; boundary="===============5837023333751054353=="
+MIME-Version: 1.0
+
+--===============5837023333751054353==
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: base64
+
+RmluZCBhdHRhY2hlZCB0aGUgRE1BUkMgQWdncmVnYXRlIFJlcG9ydC4=
+
+--===============5837023333751054353==--
+--===============4874384699657112906==
+Content-Type: application/gzip
+MIME-Version: 1.0
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+ filename="esa1.hc4958-69.iphmx.com!combostrap.com!1681963204!1682049605.xml.gz"
+
+H4sICEgKQmQC/2VzYTEuaGM0OTU4LTY5LmlwaG14LmNvbSFjb21ib3N0cmFwLmNvbSExNjgxOTYz
+MjA0ITE2ODIwNDk2MDUueG1sAI1UXW/bIBR976+Ior3GH5nt2RKhq7ROmrRu0rQ9WwRfO6g2IMBZ
++u8HBX+s6aY+Gc49cO45vja6vQz95gxKM8EP2zRKthvgVDSMd4ftr5+fd+V2c4tvUAvQHAl9xDeb
+DQp8bOkonjauoEAKZeoBDGmIIQ6zqFBdzckAGDRJoxPNqrzcFVXE5Gm4RFQMKJ4p/gQMhPX44e7L
+1/sfu0939w/fv33892HPDicvRpGaCm4INTXjrcCWcA16duiXNbg9ZlnevGuLkhZNcUjTqswISdOy
+zasy//Af9eUOf6c1DrUivAtmLHSEjtm0ijKtivf7JEOxR6Y68MZVbaUqktz2y6fL4r9vm9XWCSMp
+ekafajkee6ZPMDcibC4c2yaPQtsApO83wJ5Dmkc2YIVivwiglu0z5p4ekpgLDiiWYa+ljVVPO0kN
+ThM7C27x3OZrLdm0qVBTd0r8nv1rMSoKNZN4n1RRmUf7NIkyG9NSmKhUjNyKodgvJjjowZn0o02s
+mQouBqal0My4GfUm1siK5wKQRGtLmLMIZlvc2hFzjttZMn5d076iyRliDXDDWma/kPnYCUgDqm6V
+GK5ezbq2zMYZeiHBo8cn00PEwbghWReC9pUiIqM51Qr02JuliRcG3zApPgjogRqhcCdE19skZ2Dh
+eKkQZNjMka110SrMpYeVwWt5au3iwfm10s+bN+ougxy/zMOR/ViieP7J/QFDOvPSFwUAAA==
+
+--===============4874384699657112906==--

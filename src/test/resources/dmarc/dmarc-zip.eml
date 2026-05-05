@@ -1,0 +1,94 @@
+Delivered-To: dmarc@combostrap.com
+Received: by 2002:a05:6838:a209:b0:78f:50aa:35d7 with SMTP id s9csp3880798nkp;
+        Fri, 15 Sep 2023 04:08:26 -0700 (PDT)
+X-Received: by 2002:a05:6870:659e:b0:1d6:5c24:6e66 with SMTP id fp30-20020a056870659e00b001d65c246e66mr1518085oab.38.1694776105961;
+        Fri, 15 Sep 2023 04:08:25 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1694776105; cv=none;
+        d=google.com; s=arc-20160816;
+        b=iysoaFBeyQ+byrkGBMOdt6pxuGLRziEGR5V3x87JduueGkVzD5upbZUe909WPWVyk7
+         7R1zT8/gxfT5P9u8e6bJgB21uBGZaF84im9G3ULdeQlXtXsUoUBLiBGJRvY6lj2aX+Lw
+         eDD5ZOcuqPmPc8/0QUXvqfCKkafn7+Wk2SND0fM9RASveNBquYiLvc773feloRBtOAE5
+         u60Hg2udr26nfsXeqcRs5p8Vx+7lCq3KCBYALbxcmNIa5W14dkCpO5wTsV+6gdtj5eaM
+         YFAFhSv7ic7kge1K+xq45yfg7JW1xg5u9yE9hAix3Jgh3fhVPFVA12JU2cn7keVOpT/r
+         iOeQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20160816;
+        h=content-transfer-encoding:content-disposition:to:from:subject
+         :message-id:date:mime-version:dkim-signature;
+        bh=BQbyrAujJMuCfi3Q6jXT8vLRlKCLLOkc+5a9ukuQvG0=;
+        fh=DZCotpGZfu1l1/g1Hw2nJkxxs2LHsuFUzlm+kmXcFDw=;
+        b=Fc/rbHbWSFMcNVdY4QaNBSBeG3wZRABF6t7SMfKDLsZ/HVY2GclYxyv7ZpEhUk9BYJ
+         BLazDrzm3awjViDzMy70T2rXZIjPPZvpKNYV24Zvr0RhdF1t7Vj6FSWBRN0kzd+FJjL9
+         gVww1Nt8wjYryfwYgHDWDsMg18/8yAqYqxXBbu6fXwqSoV3Sy9STMoLDQ3bxB5Im52rG
+         gdKEfAw0rYjkgUWlJjDO5RIkXt3x7njSeKV8du/di9oCok8LYZCw5C0CnTOBbjXCPRdU
+         xou3mVuoTuudpFUZAe8Gr/Dm0PSNrUZ0kV88f+MTHDiAHfBz6qwGdNVzSyZd/2C3OVZ2
+         XUPA==
+ARC-Authentication-Results: i=1; mx.google.com;
+       dkim=pass header.i=@google.com header.s=20230601 header.b="Rgc/I+K5";
+       spf=pass (google.com: domain of noreply-dmarc-support@google.com designates 209.85.220.73 as permitted sender) smtp.mailfrom=noreply-dmarc-support@google.com;
+       dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=google.com
+Return-Path: <noreply-dmarc-support@google.com>
+Received: from mail-sor-f73.google.com (mail-sor-f73.google.com. [209.85.220.73])
+        by mx.google.com with SMTPS id fu17-20020a0568705d9100b001b370d361e4sor2833934oab.7.2023.09.15.04.08.25
+        for <dmarc@combostrap.com>
+        (Google Transport Security);
+        Fri, 15 Sep 2023 04:08:25 -0700 (PDT)
+Received-SPF: pass (google.com: domain of noreply-dmarc-support@google.com designates 209.85.220.73 as permitted sender) client-ip=209.85.220.73;
+Authentication-Results: mx.google.com;
+       dkim=pass header.i=@google.com header.s=20230601 header.b="Rgc/I+K5";
+       spf=pass (google.com: domain of noreply-dmarc-support@google.com designates 209.85.220.73 as permitted sender) smtp.mailfrom=noreply-dmarc-support@google.com;
+       dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=google.com
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=google.com; s=20230601; t=1694776105; x=1695380905; darn=combostrap.com;
+        h=content-transfer-encoding:content-disposition:to:from:subject
+         :message-id:date:mime-version:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=BQbyrAujJMuCfi3Q6jXT8vLRlKCLLOkc+5a9ukuQvG0=;
+        b=Rgc/I+K5eFTafTDlh4tyj9XKXV/0IQqeH/DnfHKsNn5lq/ahuGlJQNbVc9QeXJlF0J
+         YMZ0mGjf2cY+PsiUtg9ml9OnAz7/rrrAULlsMMDdH890g6oCZEfweFVjddhK1JP9Nl5E
+         a/BbaBq2sfGAIuxOA2LBiNdffie2AaBlNfjm/5I4exVzcmcpKHNpV46p2D32Ksh50sU6
+         58GtpiIbkW9e4GeLw9U1UyswTs5o8bj/VZ1l0dhxpSg1/wTd3jFQE1cOk25sRYMHHiMB
+         bT2cCwWQ+DFsa4L3t3YJFCNsPVNfj55po2xLKJE4sPG9xSqhTzlxE2g7B76NpKqsxcj8
+         /+RQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1694776105; x=1695380905;
+        h=content-transfer-encoding:content-disposition:to:from:subject
+         :message-id:date:mime-version:x-gm-message-state:from:to:cc:subject
+         :date:message-id:reply-to;
+        bh=BQbyrAujJMuCfi3Q6jXT8vLRlKCLLOkc+5a9ukuQvG0=;
+        b=bJNap0O0JwYWmLiQc+ovb4s7HDfpGrKTTtDe4QHxPd/8Zji9AR9gyJ+YMOHtJiORhR
+         EXDgIpTdVAsvCGMYOQ0pJ5vFSSI7OYarJ0F9DLShYd3uJBVDs3mIqFdDUKngm8o9Wam7
+         C+UpQ4Bx4ydt3vz69QW+HNi/LlNZIMh/1QY9gTfmnKy4xq6CkpBSN5zkksCZcESoKz3B
+         79+7xjVHEWPN4zzoKbmNIJzXJWa6tZrBND6GW8AnJgTLb2sDu4lAcR1qRTXEuEevY1Ks
+         D9aTiIuPlcdxuZCTOZRMBZYIkCqyAvCZdkM28AExEpL+wR4PaSAhBzcVvHoD+T9Z32ia
+         PinQ==
+X-Gm-Message-State: AOJu0YxehnpOqs9JvXYP1M1GtmeRoCPFVjtoWHA+h9smRBodTVDr2zMO
+	7CIqE/EHeBX460yrIyauAQ==
+X-Google-Smtp-Source: AGHT+IFyMQN2v1Z7OFlXSs9KJ8zX/X/jNRttQqmoEEcPqwS7UO8Tf5whSQxNUmMHI6RZ1RSv13yDxHgys0M1qw==
+MIME-Version: 1.0
+X-Received: by 2002:a05:6870:5b19:b0:1d5:8fad:fb03 with SMTP id
+ ds25-20020a0568705b1900b001d58fadfb03mr504189oab.4.1694776105806; Fri, 15 Sep
+ 2023 04:08:25 -0700 (PDT)
+Date: Thu, 14 Sep 2023 16:59:59 -0700
+Message-ID: <7362984822448393112@google.com>
+Subject: Report domain: tabulify.com Submitter: google.com Report-ID: 7362984822448393112
+From: noreply-dmarc-support@google.com
+To: dmarc@combostrap.com
+Content-Type: application/zip; 
+	name="google.com!tabulify.com!1694649600!1694735999.zip"
+Content-Disposition: attachment; 
+	filename="google.com!tabulify.com!1694649600!1694735999.zip"
+Content-Transfer-Encoding: base64
+
+UEsDBAoAAAAIAD1UL1c/77aF8AEAALwEAAAxAAAAZ29vZ2xlLmNvbSF0YWJ1bGlmeS5jb20hMTY5
+NDY0OTYwMCExNjk0NzM1OTk5LnhtbK1UwXKbMBC95ys8vhsZjInpKEpP+YL0zMhiwZqApJFEEv99
+l0jC1OlMLz0h3u6+3fe0QJ8/x2HzDtZJrZ62ebbfbkAJ3UrVP21/vb7sTtvNM3ugHUB75uKNPWw2
+1ILR1jcjeN5yz2cMUW37RvERWK91P0Am9EjJAoYcGLkcmNLIMFx37cit2LnJzHQ/12UhL9Z8essb
+oZXnwjdSdZpdvDfuByGxNLuVEk64ch9gSVFW1fG0R67v9YE4ypAtezxURX0qT0VRlqdDfcjzgpJb
+OKSjVGgsV30Ug9AZeqlYXtVlVdbVHpsFJMVBtV/Rx8OxrmscRSUy8ifb0m3tKTV6kOLamOk8SHeB
+ZRCN7ijm+XkaZHcNjkUwZPD2TY7MUhIOEXSm+8LmZ4AMXoUCSkx8dwlwCTHCs3wWNh8CpFKSMmH0
+v42J5gpt08RWfyyeOD1ZAY00LK+LrK6z4zErigp7LoGUKvSksD0l4ZDg2A/e+TChi20KzNZIZ7ST
+Hrc5DrlGVnmzLYY7hwmLQ9GCLgYWm1Ya73ritSVlVLagvOwkfktL2QV4C7bprB7vrmsdiVTfCCif
+/KWx4KbB3zjv5v3nMsRVn0misPiy0gwDCK8tw+Kzdvi5GJSfwMWDdWe6cud/TLGyGzf0TvecHLaJ
+ktuP6DdQSwECCgAKAAAACAA9VC9XP++2hfABAAC8BAAAMQAAAAAAAAAAAAAAAAAAAAAAZ29vZ2xl
+LmNvbSF0YWJ1bGlmeS5jb20hMTY5NDY0OTYwMCExNjk0NzM1OTk5LnhtbFBLBQYAAAAAAQABAF8A
+AAA/AgAAAAA=

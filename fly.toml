@@ -1,0 +1,21 @@
+# fly.toml app configuration file generated for eraldy-inbox on 2023-10-25T15:34:07+02:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = "eraldy-inbox"
+primary_region = "ams"
+
+[build]
+  dockerfile = "deploy/inbox.eraldy.com/Dockerfile"
+#  image = "com.eraldy/smtp-inbox"
+
+[[services]]
+  internal_port = 25
+  protocol = "tcp"
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+  [[services.ports]]
+    port = 25

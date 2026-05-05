@@ -1,0 +1,116 @@
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <name>Smtp Server</name>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>11</source>
+                    <target>11</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <!--  Id   -->
+    <artifactId>smtp-server</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <groupId>gerardnico.com</groupId>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.vertx</groupId>
+                <artifactId>vertx-stack-depchain</artifactId>
+                <version>4.5.3</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-micrometer-metrics</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-health-check</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-config</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-config-yaml</artifactId>
+        </dependency>
+        <!-- For dmarc report -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-xml</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+            <!-- https://mvnrepository.com/artifact/io.micrometer/micrometer-registry-prometheus-->
+            <version>1.11.5</version>
+        </dependency>
+        <dependency>
+            <groupId>org.simplejavamail</groupId>
+            <artifactId>simple-java-mail</artifactId>
+            <version>8.12.6</version>
+        </dependency>
+        <!-- To test chunking (ie BDAT command), otherwise we get this error.-->
+        <!-- Suppressed: org.simplejavamail.internal.moduleloader.ModuleLoaderException: Batch module not found,-->
+        <!-- make sure it is on the classpath (https://github.com/bbottema/simple-java-mail/tree/develop/modules/batch-module)-->
+        <!-- at app//org.simplejavamail.internal.moduleloader.ModuleLoader.loadModule(ModuleLoader.java:133)-->
+        <!-- at app//org.simplejavamail.internal.moduleloader.ModuleLoader.loadBatchModule(ModuleLoader.java:95)-->
+        <!-- at app//org.simplejavamail.mailer.internal.MailerImpl.shutdownConnectionPool(MailerImpl.java:395)-->
+        <dependency>
+            <groupId>org.simplejavamail</groupId>
+            <artifactId>batch-module</artifactId>
+            <version>8.12.6</version>
+        </dependency>
+        <!-- https://eclipse-ee4j.github.io/angus-mail/-->
+        <!-- simple-java-mail as an old one with a bug -->
+        <dependency>
+            <groupId>org.eclipse.angus</groupId>
+            <artifactId>angus-mail</artifactId>
+            <version>2.0.5</version>
+        </dependency>
+        <dependency>
+            <groupId>com.sanctionco.jmail</groupId>
+            <artifactId>jmail</artifactId>
+            <version>2.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>dnsjava</groupId>
+            <artifactId>dnsjava</artifactId>
+            <version>3.6.0</version>
+        </dependency>
+        <!-- for charset detection -->
+        <dependency>
+            <groupId>com.ibm.icu</groupId>
+            <artifactId>icu4j</artifactId>
+            <version>68.1</version>
+        </dependency>
+    </dependencies>
+
+</project>

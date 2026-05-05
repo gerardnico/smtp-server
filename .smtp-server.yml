@@ -1,0 +1,82 @@
+# This file is the dev/test configuration file
+#
+# The separators in key are points
+# to be consistent with the configuration of Java Mail
+software.name: Eraldy # software name advertised in the banner
+auth.localhost.required: false # localhost does not need any authentication
+session.replay: true # print the session on stdout
+# The services started by ports
+services:
+  2525: # port 2525 (PaperCut got already the port 25)
+    tls.enabled: false # start as plain connection
+    starttls.enabled: true # may upgrade the connection to TLS
+    starttls.required: false # upgrading the connection to TLS is mandatory (false for PaperCut)
+    auth.required: false # no authentication is required
+  465: # SSL port
+    tls.enabled: true # start as TLS connection
+    starttls.enabled: false # as we have a TLS connection
+    auth.required: true # auth is required, it may not for local delivery, but we use it to test
+host: mx1.eraldy.dev # the default host (chosen when the connection is not secured (no TLS) as we don't have the requested host)
+hosts: # the hosted hosts by hostname
+  mx1.eraldy.dev: # the host name (ie DNS cname)
+    domain: eraldy.dev # the email domain
+    postmaster: alice@bytle.dev # the postmaster email
+  smtp.eraldy.dev:
+    domain: eraldy.dev
+    postmaster: bob@bytle.dev
+    key: ../cert/key.pem # the path to the private key
+    cert: ../cert/cert.pem # the path to the certificate
+  smtp.datacadamia.dev:
+    domain: datacadamia.dev
+    postmaster: bob@bytle.dev
+
+# Http server for prometheus metrics
+http.server.port: 25026
+
+# System limits
+idle.session.timeout.second: 50 # to allow long debug session
+handshake.timeout.second: 10 # the default
+max.sessions: 50 # the maximum total of connection/sockets
+max.sessions.by.ip: 3 # the maximum total of sockets by remote ip
+max.message.size.bytes: 1048576 # the maximum message size in bytes 1 Mo
+max.exception.count.by.session: 3 # the maximum number of exception by session
+max.recipients: 100 # the maximum number of recipients (should be bigger or equal to 100 as specified in the spec)
+
+
+# Delivery
+delivery.quota.remote: 200 # by day by account (same as SES by account)
+delivery.quota.remote.rate: 1 # by second by account (same as SES by account)
+delivery.retry.interval: 15 # minutes, the interval in which a failed delivery is not retried
+delivery.run.after.reception: true # deliver the message immediately after reception
+delivery.run.interval: 1 # minutes (if 0 not delivery occurs at interval)
+
+# Reception
+reception.enable.dns.block.list: true # by default false because not home but on cloud host, the DNS is public, and it then does not work
+
+# Users
+users:
+  # domain
+  eraldy.dev:
+    # memory is to test email reception
+    memory:
+      password: secret
+      mailbox:
+        type: memory # an in-memory map, so that we can retrieve the email
+    # dmarc-memory is to test dmarc email
+    dmarc-memory:
+      mailbox:
+        type: memory
+        milters:
+          - dmarc
+    # dmarc-s3 is to send a dmarc email to s3
+    dmarc-s3:
+      mailbox:
+        type: s3
+        milters:
+          - dmarc
+        s3.bucket.name: 'dmarc-dev'
+        s3.region: 'ca-mtl'
+        s3.url.endpoint: 'https://h0k0.ca.idrivee2-22.com'
+        # in the s3 local credentials file or in env:
+        #  s3.access.key.id: ACCESS_KEY_ID
+        #  s3.secret.access.key: SECRET_ACCESS_KEY

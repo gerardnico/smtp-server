@@ -1,0 +1,40 @@
+# The separators are points
+# to be consistent with the configuration of Java Mail
+services:
+  25:
+    tls.enabled: false
+    starttls.enabled: false # We don't have any certificate management for now
+    starttls.required: false
+    auth.required: false
+  # to access it from home
+  # 2525 is taken by postfix
+  25025:
+    tls.enabled: false
+    starttls.enabled: false # We don't have any certificate management for now
+    starttls.required: false
+    auth.required: false
+host: inbox.eraldy.com
+hosts:
+  inbox.eraldy.com:
+    domain: 'inbox.eraldy.com'
+    postmaster: 'nico@eraldy.com'
+
+# As the container may stop without any activities
+# and that the envelopes are not yet stored on disk
+# we need to deliver immediately
+delivery.run.after.reception: true
+
+# Users
+users:
+  inbox.eraldy.com:
+    dmarc:
+      mailbox:
+        type: s3
+        milters:
+          - dmarc
+        s3.bucket.name: 'dmarc'
+        s3.region: 'ca-mtl'
+        s3.url.endpoint: 'https://h0k0.ca.idrivee2-22.com'
+        # in env:
+        # users_inbox.eraldy.com_dmarc_mailbox_s3_access_key_id -> ACCESS_KEY_ID
+        # users_inbox.eraldy.com_dmarc_mailbox_s3_secret_access_key -> SECRET_ACCESS_KEY
