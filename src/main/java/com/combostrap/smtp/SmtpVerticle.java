@@ -5,15 +5,17 @@ import com.combostrap.smtp.command.SmtpStartTlsCommandHandler;
 import com.combostrap.smtp.exceptions.ConfigIllegalException;
 import com.combostrap.type.CastException;
 import com.combostrap.type.Casts;
+import com.combostrap.type.Maps;
+import com.combostrap.vertx.JsonConverter;
 import com.combostrap.vertx.VertxHttpServer;
 import com.combostrap.vertx.VertxNetServer;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
-import io.vertx.core.json.JsonObject;
 import io.vertx.core.net.NetServer;
 import io.vertx.core.net.NetServerOptions;
 import io.vertx.core.net.PemKeyCertOptions;
@@ -26,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -43,25 +46,31 @@ public class SmtpVerticle extends AbstractVerticle {
 
         vertx.executeBlocking(() -> {
 
-                    ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-                    mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true);
+                    ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
+                    yamlMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true);
 
                     SmtpConfigBean smtpConfigBean;
-                    JsonObject config = this.config();
-                    if (config.isEmpty()) {
-                        String pathname = ".smtp-server.yml";
-                        File src = new File(pathname);
-                        try {
-                            smtpConfigBean = mapper.readValue(src, SmtpConfigBean.class);
-                        } catch (IOException e) {
-                            throw new RuntimeException("Error in the file "+pathname+". Error: "+e.getMessage(), e);
-                        }
-                    } else {
-                        /**
-                         * Used in test
-                         */
-                        smtpConfigBean = mapper.readValue(config.encode(), SmtpConfigBean.class);
+
+                    String pathname = ".smtp-server.yml";
+                    File src = new File(pathname);
+                    Map<String, Object> map;
+                    try {
+                        map = yamlMapper.readValue(src, new TypeReference<>() {
+                        });
+                    } catch (IOException e) {
+                        throw new RuntimeException("Error in the file " + pathname + ". Error: " + e.getMessage(), e);
                     }
+
+                    /**
+                     * Runtime Conf given by tests
+                     */
+                    Map<String, Object> runtimeConfig = JsonConverter.toDeepMap(this.config());
+                    map = Maps.deepMerge(map, runtimeConfig);
+
+                    /**
+                     * Used in test
+                     */
+                    smtpConfigBean = yamlMapper.convertValue(map, SmtpConfigBean.class);
 
 
                     if (JavaEnvs.isIsIdeDebugging()) { // sentinel check
@@ -97,7 +106,7 @@ public class SmtpVerticle extends AbstractVerticle {
                          * Server Certificates
                          */
                         PemKeyCertOptions pemKeyCertOptions = new PemKeyCertOptions();
-                        for (SmtpHost host : smtpServer.getHostedHosts().values()) {
+                        for (SmtpMxHost host : smtpServer.getHostedHosts().values()) {
                             String keyPath = host.getPrivateKeyPath();
                             if (keyPath == null) {
                                 continue;
@@ -149,8 +158,8 @@ public class SmtpVerticle extends AbstractVerticle {
                             .join(netServers)
                             .onFailure(err -> {
                                 // To get the configuration errors
-                                LOGGER.log(Level.SEVERE, "Smtp server could not be started. Error: " + err.getMessage(), err);
-                                this.handleVerticleFailure(verticlePromise, err);
+                                RuntimeException e = new RuntimeException("Smtp server could not be started. Error: " + err.getMessage(), err);
+                                this.handleVerticleFailure(verticlePromise, e);
                             })
                             .compose(result -> {
 
@@ -180,8 +189,17 @@ public class SmtpVerticle extends AbstractVerticle {
                                         .addMetrics()
                                         .build();
                                 return httpServer
-                                        .mountListen("Smtp");
-                            });
+                                        .mountListen("Smtp")
+                                        .onComplete(promise -> {
+                                            if (promise.failed()) {
+                                                this.handleVerticleFailure(verticlePromise, promise.cause());
+                                                return;
+                                            }
+                                            verticlePromise.complete();
+                                            LOGGER.info("Promise started");
+                                        });
+                            })
+                            .onFailure(e -> this.handleVerticleFailure(verticlePromise, e));
                 })
                 .onFailure(e -> this.handleVerticleFailure(verticlePromise, e));
 

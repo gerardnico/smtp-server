@@ -28,7 +28,7 @@ public class SmtpService {
     /**
      * TLS Port
      */
-    protected static final int PORT_587 = 465;
+    protected static final int PORT_587 = 25465;
 
 
     private static final Logger LOGGER = Logger.getLogger(SmtpService.class.getName());

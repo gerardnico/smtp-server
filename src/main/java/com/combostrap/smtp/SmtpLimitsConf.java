@@ -27,6 +27,6 @@ public class SmtpLimitsConf {
 
     public long handShakeTimeoutSecond = SSLOptions.DEFAULT_SSL_HANDSHAKE_TIMEOUT;
 
-    public int idleTimeoutSecond = 5 * 60;
+    public int idleConnectionTimeoutSecond = 5 * 60;
 
 }

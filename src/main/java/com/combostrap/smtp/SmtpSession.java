@@ -388,7 +388,7 @@ public class SmtpSession implements Handler<List<SmtpInput>> {
         /**
          * Connected with ssl?
          */
-        SmtpHost requestedHost = this.smtpGreeting.getRequestedHost().orElse(null);
+        SmtpMxHost requestedHost = this.smtpGreeting.getRequestedHost().orElse(null);
         if (requestedHost != null) {
             return Collections.singleton(requestedHost.getDomain());
         }
@@ -399,7 +399,7 @@ public class SmtpSession implements Handler<List<SmtpInput>> {
         return this.getSmtpService().getSmtpServer().getHostedHosts()
                 .values()
                 .stream()
-                .map(SmtpHost::getDomain)
+                .map(SmtpMxHost::getDomain)
                 .collect(Collectors.toSet());
 
     }

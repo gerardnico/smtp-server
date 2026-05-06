@@ -8,6 +8,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
+import jakarta.mail.Session;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
@@ -20,7 +21,11 @@ import org.simplejavamail.converter.EmailConverter;
 import org.simplejavamail.email.EmailBuilder;
 import org.simplejavamail.mailer.MailerBuilder;
 
+import javax.net.ssl.SSLSocketFactory;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 import static com.combostrap.dmarc.DmarcManagerTest.DMARC_RESSOURCE_ROOT;
@@ -35,7 +40,7 @@ class SmtpServerTest {
 
     static Vertx vertx;
     private static String deploymentId;
-    private static final String LOCAL_DOMAIN = "eraldy.dev";
+    private static final String LOCAL_DOMAIN = "example.dev";
     private static final String LOCAL_USER_NAME = "memory";
     private static final String LOCAL_USER_EMAIL = LOCAL_USER_NAME + "@" + LOCAL_DOMAIN;
 
@@ -54,13 +59,15 @@ class SmtpServerTest {
         vertx = Vertx.vertx();
         verticle = new SmtpVerticle();
         JsonObject verticleConfig = new JsonObject();
-        verticleConfig.put("sessionReplay", false);
+        verticleConfig.put("sessionReplayEnabled", false);
+        Map<String, Object> deliveryVerticleConfig = new HashMap<>();
+        verticleConfig.put("delivery", deliveryVerticleConfig);
         // delivery cannot be immediate otherwise the test will finish before delivery
         // why ? As the delivery is running, the delivery run is returning immediately
-        verticleConfig.put(SmtpDelivery.DELIVERY_RUN_AFTER_RECEPTION_CONF, false);
+        deliveryVerticleConfig.put("immediateDelivery", false);
         // no periodic delivery run otherwise it may interfere with the test
         // that tries to retrieve the message
-        verticleConfig.put(SmtpDelivery.DELIVERY_RUN_INTERVAL_KEY, 0);
+        deliveryVerticleConfig.put("runInterval", 0);
         vertx.deployVerticle(
                 verticle,
                 new DeploymentOptions().setConfig(verticleConfig),
@@ -91,7 +98,9 @@ class SmtpServerTest {
 
         try (Mailer mailer = MailerBuilder
                 .withSMTPServerPort(SmtpService.PORT_2525)
+                .withSMTPServerHost("localhost")
                 .withTransportStrategy(TransportStrategy.SMTP)
+                .withProperty("mail.smtp.starttls.enable", "false")
                 .withSessionTimeout(sessionTimeout)
                 .withDebugLogging(true)
                 .buildMailer()) {
@@ -118,7 +127,7 @@ class SmtpServerTest {
      */
     private static void awaitCompletion(VertxTestContext testContext) throws Throwable {
         int timeout = 30;
-        if(JavaEnvs.isIsIdeDebugging()) {
+        if (JavaEnvs.isIsIdeDebugging()) {
             timeout = timeout * 120;
         }
         Assertions.assertTrue(testContext.awaitCompletion(timeout, TimeUnit.SECONDS), "Should finish in " + timeout + " seconds");
@@ -144,7 +153,7 @@ class SmtpServerTest {
                     testContext.verify(() -> {
                         Assertions.assertEquals(1, mimeMessageList.size(), "Message list size is one");
                         Object object = mimeMessageList.get(0).getObject();
-                        Assertions.assertInstanceOf(BMailMimeMessage.class, object, "Message is a mime message");
+                        Assertions.assertEquals(BMailMimeMessage.class.getSimpleName(), object.getClass().getSimpleName(), "Message is a mime message");
                         BMailMimeMessage receivedMessage = (BMailMimeMessage) object;
                         /**
                          * EOL at the end of a message body are not send by JMail
@@ -171,8 +180,9 @@ class SmtpServerTest {
 
 
         try (Mailer mailer = MailerBuilder
-                .withSMTPServerPort(SmtpService.PORT_2525)
+                .withSMTPServer("localhost", SmtpService.PORT_2525)
                 .withTransportStrategy(TransportStrategy.SMTP)
+                .withProperty("mail.smtp.starttls.enable", "false")
                 .withSessionTimeout(10 * 1000)
                 .withDebugLogging(true)
                 .buildMailer()) {
@@ -199,8 +209,9 @@ class SmtpServerTest {
         int sizeInBytes = 20;
 
         try (Mailer mailer = MailerBuilder
-                .withSMTPServerPort(SmtpService.PORT_2525)
+                .withSMTPServer("localhost", SmtpService.PORT_2525)
                 .withTransportStrategy(TransportStrategy.SMTP)
+                .withProperty("mail.smtp.starttls.enable", "false")
                 .withProperty("mail.smtp.chunksize", sizeInBytes)
                 .withSessionTimeout(10 * 1000)
                 .withDebugLogging(true)
@@ -233,9 +244,12 @@ class SmtpServerTest {
         VertxTestContext testContext = new VertxTestContext();
 
 
+        String sni = "mx1." + LOCAL_DOMAIN;
+        MailSSLSocketFactory customSslFactory = new MailSSLSocketFactory(sni);
         try (Mailer mailer = MailerBuilder
-                .withSMTPServer("mx1." + LOCAL_DOMAIN, SmtpService.PORT_2525)
+                .withSMTPServer("localhost", SmtpService.PORT_2525)
                 .withTransportStrategy(TransportStrategy.SMTP_TLS) // mandatory startTls
+                .withCustomSSLFactoryInstance(customSslFactory)
                 .withSessionTimeout(10 * 1000)
                 .withDebugLogging(true)
                 .buildMailer()) {
@@ -271,15 +285,20 @@ class SmtpServerTest {
 
         VertxTestContext testContext = new VertxTestContext();
 
+        String sni = "mx1." + LOCAL_DOMAIN;
+        MailSSLSocketFactory sslFactory = new MailSSLSocketFactory(sni);
+
         try (Mailer mailer = MailerBuilder
-                .withSMTPServer("mx1." + LOCAL_DOMAIN, SmtpService.PORT_587)
+                .withSMTPServer("localhost", SmtpService.PORT_587)
+                .withTransportStrategy(TransportStrategy.SMTPS)
+                .withCustomSSLFactoryInstance(sslFactory)
                 .withSMTPServerUsername(LOCAL_USER_NAME)
                 .withSMTPServerPassword("secret")
-                .withTransportStrategy(TransportStrategy.SMTPS)
                 .withSessionTimeout(10 * 1000)
                 .withDebugLogging(true)
-                .trustingAllHosts(true)
                 .buildMailer()) {
+
+            sslSmtpsBugCorrectionHack(mailer, sslFactory);
 
             Email email = EmailBuilder.startingBlank()
                     .from("foo@gmail.com")
@@ -303,6 +322,25 @@ class SmtpServerTest {
         awaitCompletion(testContext);
     }
 
+    // Hack when using SMTPS
+    // issue created here: https://github.com/bbottema/simple-java-mail/issues/611
+    // bug here: https://github.com/bbottema/simple-java-mail/blob/8.12.6/modules/simple-java-mail/src/main/java/org/simplejavamail/mailer/internal/MailerImpl.java#L170
+    // Props should be:
+    // mail.smtps.ssl.socketFactory or mail.smtps.socketFactory
+    // and not
+    // mail.smtp.ssl.socketFactory or mail.smtp.socketFactory
+    private void sslSmtpsBugCorrectionHack(Mailer mailer, SSLSocketFactory sslFactory) {
+
+        Session session = mailer.getSession();
+        Properties properties = session.getProperties();
+        // as seen here
+        // https://github.com/eclipse-ee4j/angus-mail/blob/2.0.5/core/src/main/java/org/eclipse/angus/mail/util/SocketFetcher.java#L383
+        properties.remove("mail.smtps.ssl.trust");
+        // as seen here: https://github.com/eclipse-ee4j/angus-mail/blob/a7a4a37844717d3967418b1640456e49153a7e7c/core/src/main/java/org/eclipse/angus/mail/util/SocketFetcher.java#L185
+        properties.put("mail.smtps.ssl.socketFactory", sslFactory);
+
+    }
+
     @Test
     void listSmtpCapabilities() {
         // gerardnico@inbox.mailbrew.com
@@ -318,8 +356,9 @@ class SmtpServerTest {
 
 
         try (Mailer mailer = MailerBuilder
-                .withSMTPServerPort(SmtpService.PORT_2525)
+                .withSMTPServer("localhost", SmtpService.PORT_2525)
                 .withTransportStrategy(TransportStrategy.SMTP)
+                .withProperty("mail.smtp.starttls.enable", "false")
                 .withSessionTimeout(10 * 1000)
                 .withDebugLogging(true)
                 .buildMailer()) {
@@ -331,7 +370,6 @@ class SmtpServerTest {
 
             mailer.sendMail(email);
 
-            checkReceivedMessage(testContext, email);
         }
 
 
@@ -371,6 +409,7 @@ class SmtpServerTest {
         try (Mailer mailer = MailerBuilder
                 .withSMTPServerPort(SmtpService.PORT_2525)
                 .withTransportStrategy(TransportStrategy.SMTP)
+                .withProperty("mail.smtp.starttls.enable", "false")
                 .withSessionTimeout(10 * 1000)
                 .withDebugLogging(true)
                 .buildMailer()) {

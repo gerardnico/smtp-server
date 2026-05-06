@@ -5,6 +5,8 @@ import com.combostrap.dns.DnsClient;
 import com.combostrap.dns.DnsIllegalArgumentException;
 import com.combostrap.dns.XBillDnsClient;
 import com.combostrap.email.BMailInternetAddress;
+import com.combostrap.email.BMailMimeMessageHeader;
+import com.combostrap.smtp.command.SmtpHeloCommandHandler;
 import com.combostrap.smtp.exceptions.ConfigIllegalException;
 import com.combostrap.smtp.mailbox.SmtpMailbox;
 import com.combostrap.smtp.mailbox.SmtpMailboxForward;
@@ -12,6 +14,7 @@ import com.combostrap.smtp.mailbox.SmtpMailboxS3;
 import com.combostrap.smtp.mailbox.SmtpMailboxStdout;
 import com.combostrap.smtp.milter.DmarcMilter;
 import com.combostrap.smtp.milter.SmtpMilter;
+import com.combostrap.type.DnsCastException;
 import com.combostrap.type.DnsName;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Vertx;
@@ -44,8 +47,8 @@ public class SmtpServer {
      */
     private final ConcurrentMap<SocketAddress, Integer> totalConnectionsByIp = new ConcurrentHashMap<>();
 
-    private final Map<String, SmtpHost> hostedDomains = new HashMap<>();
-    private final SmtpHost defaultHostedHost;
+    private final Map<DnsName, SmtpMxHost> hostedDomains = new HashMap<>();
+    private final SmtpMxHost defaultHostedHost;
 
 
     private final Map<String, SmtpDomain> smtpDomains = new HashMap<>();
@@ -76,8 +79,8 @@ public class SmtpServer {
         /**
          * Session Conf
          */
-        LOGGER.info(LOG_TAB + "Session idle timeout set to " + config.limits.idleTimeoutSecond);
-        smtpVerticle.getVertx().setPeriodic(config.limits.idleTimeoutSecond + 20, this::removeIdleSessions);
+        LOGGER.info(LOG_TAB + "Session idle timeout set to " + config.limits.idleConnectionTimeoutSecond);
+        smtpVerticle.getVertx().setPeriodic(config.limits.idleConnectionTimeoutSecond + 20, this::removeIdleSessions);
         LOGGER.info(LOG_TAB + "Session replay set to " + config.sessionReplayEnabled);
 
 
@@ -98,36 +101,53 @@ public class SmtpServer {
          */
         LOGGER.info("Host(s) Settings:");
 
-        String host = config.listeningHost;
+        /**
+         * The server name (used to sign
+         * and add trace information such as the {@link BMailMimeMessageHeader#RECEIVED}
+         * header
+         * The hostname that reaches this server
+         * It's advertised in the {@link SmtpHeloCommandHandler}
+         */
+        DnsName host;
+        try {
+            host = DnsName.create(config.host);
+        } catch (DnsCastException e) {
+            throw new ConfigIllegalException("The public host name (" + config.host + ") is not valid");
+        }
 
 
         for (Map.Entry<String, SmtpHostConfig> virtualHostnameString : config.hosts.entrySet()) {
 
-            String domainName = virtualHostnameString.getKey();
-            if (domainName == null) {
-                throw new ConfigIllegalException("The domain for the hostname (" + virtualHostnameString + ") is mandatory");
-            }
-            SmtpDomain smtpDomain;
+            String mxHostName = virtualHostnameString.getKey();
+            DnsName mxDnsName;
             try {
-                smtpDomain = this.getOrCreateDomainByName(domainName);
-            } catch (DnsIllegalArgumentException e) {
-                throw new ConfigIllegalException("The domain name (" + domainName + ") for the hostname (" + virtualHostnameString + ") is not valid");
+                mxDnsName = DnsName.create(mxHostName);
+            } catch (DnsCastException e) {
+                throw new ConfigIllegalException("The domain for the hostname (" + mxHostName + ") is not valid");
             }
 
-            SmtpHost smtpHost = new SmtpHost(domainName, smtpDomain, virtualHostnameString.getValue());
-            this.hostedDomains.put(domainName, smtpHost);
-            LOGGER.info(LOG_TAB + "Virtual Host added: " + smtpHost.getHostedHostname() + " (Domain: " + smtpHost.getDomain() + ", Postmaster: " + smtpHost.getPostmaster().getPostmasterAddressInConfiguration() + ")");
+            SmtpHostConfig value = virtualHostnameString.getValue();
+
+            SmtpDomain smtpDomain;
+            try {
+                smtpDomain = this.getOrCreateDomainByName(value.domain);
+            } catch (DnsIllegalArgumentException e) {
+                throw new ConfigIllegalException("The domain name (" + mxHostName + ") for the hostname (" + virtualHostnameString + ") is not valid");
+            }
+
+
+            SmtpMxHost smtpMxHost = new SmtpMxHost(mxDnsName, smtpDomain, value);
+            this.hostedDomains.put(mxDnsName, smtpMxHost);
+            LOGGER.info(LOG_TAB + "Virtual Host added: " + smtpDomain + " (Domain: " + smtpMxHost.getDomain() + ", Postmaster: " + smtpMxHost.getPostmaster().getPostmasterAddressInConfiguration() + ")");
         }
         this.defaultHostedHost = this.hostedDomains.get(host);
         if (this.defaultHostedHost == null) {
-            throw new ConfigIllegalException("The main host (" + host + ") was not found in the hosts. It is mandatory");
+            throw new ConfigIllegalException("The public/main host (" + host + ") was not defined in the hosts configuration. It is mandatory");
         }
 
         /**
          * Smtp Services
          */
-
-
         for (Map.Entry<Integer, SmtpServiceConfig> serviceKey : config.services.entrySet()) {
             Integer servicePort = serviceKey.getKey();
 
@@ -163,7 +183,7 @@ public class SmtpServer {
             String domain = userEntry.getKey();
             SmtpDomain smtpDomain = this.smtpDomains.get(domain.toLowerCase());
             if (smtpDomain == null) {
-                throw new ConfigIllegalException("The users domain (" + domain + ") was not found in the hosts");
+                throw new ConfigIllegalException("The domain (" + domain + ") defined in the users key was not found in the hosts");
             }
             for (Map.Entry<String, SmtpUserConf> user : userEntry.getValue().entrySet()) {
 
@@ -239,8 +259,8 @@ public class SmtpServer {
         return smtpDomain;
     }
 
-    public static SmtpServer create(AbstractVerticle smtpVerticle, SmtpConfigBean configAccessor) throws ConfigIllegalException {
-        return new SmtpServer(smtpVerticle, configAccessor);
+    public static SmtpServer create(AbstractVerticle smtpVerticle, SmtpConfigBean smtpConfigBean) throws ConfigIllegalException {
+        return new SmtpServer(smtpVerticle, smtpConfigBean);
     }
 
     /**
@@ -253,9 +273,9 @@ public class SmtpServer {
         LOGGER.fine("There is " + activeSessions.size() + " session");
         if (!JavaEnvs.isIsIdeDebugging()) {
             for (SmtpSession smtpSession : activeSessions.values()) {
-                LocalDateTime deadlineTime = smtpSession.getLastInteractiveTime().plusSeconds(this.config.limits.idleTimeoutSecond);
+                LocalDateTime deadlineTime = smtpSession.getLastInteractiveTime().plusSeconds(this.config.limits.idleConnectionTimeoutSecond);
                 if (deadlineTime.isBefore(now)) {
-                    smtpSession.closeSessionWithReply(SmtpReply.create(SmtpReplyCode.SERVICE_NOT_AVAILABLE_421, "Connection was idle for more than " + this.config.limits.idleTimeoutSecond + " seconds. Bye."));
+                    smtpSession.closeSessionWithReply(SmtpReply.create(SmtpReplyCode.SERVICE_NOT_AVAILABLE_421, "Connection was idle for more than " + this.config.limits.idleConnectionTimeoutSecond + " seconds. Bye."));
                 }
             }
         }
@@ -297,17 +317,17 @@ public class SmtpServer {
 
     }
 
-    public Map<String, SmtpHost> getHostedHosts() {
+    public Map<DnsName, SmtpMxHost> getHostedHosts() {
         return this.hostedDomains;
     }
 
 
-    public SmtpHost getDefaultHostedHost() {
+    public SmtpMxHost getDefaultHostedHost() {
         return this.defaultHostedHost;
     }
 
     public int getIdleTimeoutSecond() {
-        return this.config.limits.idleTimeoutSecond;
+        return this.config.limits.idleConnectionTimeoutSecond;
     }
 
     public String getSoftwareName() {
@@ -328,7 +348,7 @@ public class SmtpServer {
 
 
     public boolean getLocalHostAuthenticationRequired() {
-        return this.config.localhostAuthenticationRequired;
+        return this.config.authLocalhostRequired;
     }
 
 
@@ -351,7 +371,7 @@ public class SmtpServer {
         SmtpDomain domain = this.hostedDomains
                 .values()
                 .stream()
-                .map(SmtpHost::getDomain)
+                .map(SmtpMxHost::getDomain)
                 .filter(d -> d.getDnsDomain().equals(userDomain))
                 .findFirst()
                 .orElse(null);

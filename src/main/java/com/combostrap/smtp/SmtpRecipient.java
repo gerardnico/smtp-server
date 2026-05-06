@@ -59,7 +59,7 @@ public class SmtpRecipient {
             if (smtpSession.isFirstPartyEmail(recipientInternetAddress)) {
                 delivery = SmtpDeliveryType.LOCAL;
             } else {
-                throw SmtpException.create(SmtpReplyCode.NO_SUCH_USER_550, "User is unknown (not a local user)")
+                throw SmtpException.create(SmtpReplyCode.NO_SUCH_USER_550, "User "+recipientInternetAddress+" is unknown (not a local user)")
                         .setBadBehaviorFlag();
             }
         }

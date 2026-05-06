@@ -4,6 +4,7 @@ import com.combostrap.smtp.SmtpConfigBean;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
 import io.vertx.core.Vertx;
 
+import java.util.Optional;
 import java.util.logging.Logger;
 
 
@@ -48,17 +49,17 @@ public class VertxNetServer {
         return builder.configAccessor;
     }
 
-    public PrometheusMeterRegistry getMetricsRegistry() {
+    public Optional<PrometheusMeterRegistry> getMetricsRegistry() {
         return MainLauncher.prometheus.getRegistry();
     }
 
 
     public String getListeningHost() {
-        return builder.listeningHost;
+        return builder.httpListeningHost;
     }
 
     public int getListeningPort() {
-        return builder.listeningPort;
+        return builder.httpListeningPort;
     }
 
 
@@ -76,8 +77,8 @@ public class VertxNetServer {
 
         private final SmtpConfigBean configAccessor;
         private final Vertx vertx;
-        private String listeningHost;
-        private Integer listeningPort;
+        private String httpListeningHost;
+        private Integer httpListeningPort;
 
         public builder(Vertx vertx, SmtpConfigBean configAccessor) {
             this.configAccessor = configAccessor;
@@ -86,12 +87,12 @@ public class VertxNetServer {
 
 
         public builder setFromConfigAccessorWithPort() {
-            this.listeningHost = configAccessor.listeningHost;
-            LOGGER.info("The listening host was set to: " + this.listeningHost);
-            this.listeningPort = configAccessor.listeningPort;
-            LOGGER.info("The listening port was set to: " + this.listeningPort);
-            Integer publicPort = configAccessor.publicPort;
-            LOGGER.info("The public port was set to: " + publicPort);
+            this.httpListeningHost = configAccessor.listeningHost;
+            LOGGER.info("The http listening host was set to: " + this.httpListeningHost);
+            this.httpListeningPort = configAccessor.httpPort;
+            LOGGER.info("The http listening port was set to: " + this.httpListeningPort);
+            Integer httpPublicPort = configAccessor.publicHttpPort;
+            LOGGER.info("The public http port was set to: " + httpPublicPort);
             return this;
         }
 

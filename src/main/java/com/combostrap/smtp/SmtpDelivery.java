@@ -11,9 +11,7 @@ import java.util.logging.Logger;
 
 public class SmtpDelivery implements Handler<Long> {
 
-    public static final String DELIVERY_RUN_AFTER_RECEPTION_CONF = "delivery.run.after.reception";
-    private static final String DELIVERY_RETRY_INTERVAL_KEY = "delivery.retry.interval";
-    public static final String DELIVERY_RUN_INTERVAL_KEY = "delivery.run.interval";
+
     static Logger LOGGER = Logger.getLogger(SmtpDelivery.class.getName());
 
     private final Map<Integer, SmtpDeliveryEnvelope> deliveryQueue = new HashMap<>();
@@ -33,11 +31,11 @@ public class SmtpDelivery implements Handler<Long> {
             LOGGER.info("Delivery run interval set to " + deliveryInterval + " minutes");
             vertx.setPeriodic((long) deliveryInterval * 60 * 1000, this);
         } else {
-            LOGGER.info("Delivery run at interval disabled. The interval value (" + deliveryInterval + ") of the configuration (" + DELIVERY_RETRY_INTERVAL_KEY + ") is negative or null.");
+            LOGGER.info("Delivery run at interval disabled. The interval value (" + deliveryInterval + ") is negative or null.");
         }
 
         this.retryIntervalBetweenFailures = configAccessor.retryInterval;
-        LOGGER.info("Delivery retry interval (" + DELIVERY_RETRY_INTERVAL_KEY + ") between failures set to " + this.retryIntervalBetweenFailures + " minutes");
+        LOGGER.info("Delivery retry interval between failures set to " + this.retryIntervalBetweenFailures + " minutes");
 
     }
 

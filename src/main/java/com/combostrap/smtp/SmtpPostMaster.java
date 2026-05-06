@@ -21,13 +21,13 @@ public class SmtpPostMaster {
   private final BMailInternetAddress postMasterEmailInConfiguration;
   private final BMailInternetAddress postMasterAtAddress;
 
-  public SmtpPostMaster(SmtpHost smtpHost, String postMasterEmailInConfiguration) throws AddressException {
+  public SmtpPostMaster(SmtpMxHost smtpMxHost, String postMasterEmailInConfiguration) throws AddressException {
     this.postMasterEmailInConfiguration = BMailInternetAddress.of(postMasterEmailInConfiguration);
-    this.postMasterAtAddress = BMailInternetAddress.of(POSTMASTER + "@" + smtpHost.getDomain());
+    this.postMasterAtAddress = BMailInternetAddress.of(POSTMASTER + "@" + smtpMxHost.getDomain());
   }
 
-  public static SmtpPostMaster create(SmtpHost smtpHost, String postMasterEmailConf) throws AddressException {
-    return new SmtpPostMaster(smtpHost, postMasterEmailConf);
+  public static SmtpPostMaster create(SmtpMxHost smtpMxHost, String postMasterEmailConf) throws AddressException {
+    return new SmtpPostMaster(smtpMxHost, postMasterEmailConf);
   }
 
   public boolean isPostMasterPath(String forwardPathString) {

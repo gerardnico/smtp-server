@@ -35,11 +35,11 @@ public class ServerSsl {
     Path key;
     Path cert;
 
-    public static ServerSsl create(SmtpConfigBean configAccessor)  {
+    public static ServerSsl create(SmtpConfigBean smtpConfigBean)  {
 
         Path sslKeyPath;
         try {
-            sslKeyPath = Paths.get(configAccessor.sslKey);
+            sslKeyPath = Paths.get(smtpConfigBean.keyPath);
         } catch (NoConfException e) {
             throw new IllegalStateException(e.getMessage(), e);
         }
@@ -49,7 +49,7 @@ public class ServerSsl {
 
         Path sslCertPath;
         try {
-            sslCertPath = Paths.get(configAccessor.sslCert);
+            sslCertPath = Paths.get(smtpConfigBean.certificatePath);
         } catch (NoConfException e) {
             throw new IllegalStateException(e.getMessage(), e);
         }

@@ -24,11 +24,15 @@ public class TowerFailureHandler implements Handler<Throwable> {
         PrometheusMeterRegistry metricsRegistry;
         Counter failureCounterTemp;
 
-        metricsRegistry = server.getMetricsRegistry();
-        failureCounterTemp = metricsRegistry
-                .counter("vertx_failure");
+        metricsRegistry = server.getMetricsRegistry().orElse(null);
+        if (metricsRegistry != null) {
+            failureCounterTemp = metricsRegistry
+                    .counter("vertx_failure");
+            failureCounter = failureCounterTemp;
+        } else {
+            failureCounter = null;
+        }
 
-        failureCounter = failureCounterTemp;
 
     }
 

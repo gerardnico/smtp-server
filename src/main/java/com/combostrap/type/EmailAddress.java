@@ -86,7 +86,7 @@ public class EmailAddress {
             throw new EmailCastException("The domain should not start with a [");
         }
         if (this.domain.getLabels().size() == 1) {
-            throw new EmailCastException("The domain should have a tld");
+            throw new EmailCastException("The email " + mailAddress + " has a domain without a tld");
         }
         try {
             validator.enforceValid(mailAddress);

@@ -1,4 +1,4 @@
-Delivered-To: dmarc@combostrap.com
+Delivered-To: dmarc-memory@example.dev
 Received: by 2002:a05:6838:a209:b0:78f:50aa:35d7 with SMTP id s9csp3880798nkp;
         Fri, 15 Sep 2023 04:08:26 -0700 (PDT)
 X-Received: by 2002:a05:6870:659e:b0:1d6:5c24:6e66 with SMTP id fp30-20020a056870659e00b001d65c246e66mr1518085oab.38.1694776105961;
@@ -29,7 +29,7 @@ ARC-Authentication-Results: i=1; mx.google.com;
 Return-Path: <noreply-dmarc-support@google.com>
 Received: from mail-sor-f73.google.com (mail-sor-f73.google.com. [209.85.220.73])
         by mx.google.com with SMTPS id fu17-20020a0568705d9100b001b370d361e4sor2833934oab.7.2023.09.15.04.08.25
-        for <dmarc@combostrap.com>
+        for <dmarc-memory@example.dev>
         (Google Transport Security);
         Fri, 15 Sep 2023 04:08:25 -0700 (PDT)
 Received-SPF: pass (google.com: domain of noreply-dmarc-support@google.com designates 209.85.220.73 as permitted sender) client-ip=209.85.220.73;
@@ -72,7 +72,7 @@ Date: Thu, 14 Sep 2023 16:59:59 -0700
 Message-ID: <7362984822448393112@google.com>
 Subject: Report domain: tabulify.com Submitter: google.com Report-ID: 7362984822448393112
 From: noreply-dmarc-support@google.com
-To: dmarc@combostrap.com
+To: dmarc-memory@example.dev
 Content-Type: application/zip; 
 	name="google.com!tabulify.com!1694649600!1694735999.zip"
 Content-Disposition: attachment; 

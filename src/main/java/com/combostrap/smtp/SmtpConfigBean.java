@@ -16,17 +16,13 @@ public class SmtpConfigBean {
     @JsonProperty("softwareName")
     public String softwareName = "Smtp Server";
 
-    @SuppressWarnings("unused")
-    @JsonProperty("authLocalhostRequired")
-    public boolean authLocalhostRequired = true; // default: true
 
-    @JsonProperty("sessionReplay")
     public boolean sessionReplayEnabled = false;
 
     /**
      * Authentication from Localhost is not required by default
      */
-    public boolean localhostAuthenticationRequired = false;
+    public boolean authLocalhostRequired = false;
 
     /**
      * Listen from all hostname
@@ -46,14 +42,21 @@ public class SmtpConfigBean {
     public String listeningHost = WILDCARD_IPV4_ADDRESS;
 
     /**
-     * Listening Port
+     * Port of the HTTP server
      */
-    public Integer listeningPort = 25026;
+    public Integer httpPort = 25026;
 
     /**
-     * Public Port, the proxy port, normally
+     * The port of the proxy
      */
-    public Integer publicPort = 80;
+    public Integer publicHttpPort = 80;
+
+    /**
+     * The actual hostname
+     * (chosen when the connection is not secured (no TLS) as we don't have the requested host)
+     */
+    @NotNull
+    public String host;
 
     /**
      * The key is the hostname that reaches this server
@@ -84,12 +87,12 @@ public class SmtpConfigBean {
     /**
      * The path to the SSL Key
      */
-    public String sslKey = "ssl/key.pem";
+    public String keyPath = "ssl/key.pem";
 
     /**
      * The path to the SSL Cert
      */
-    public String sslCert = "ssl/cert.pem";
+    public String certificatePath = "ssl/cert.pem";
 
     /**
      * Path where the uploaded temporary artefact  of the HTTP server are stored

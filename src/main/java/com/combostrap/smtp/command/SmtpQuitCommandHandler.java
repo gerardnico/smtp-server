@@ -11,7 +11,7 @@ public class SmtpQuitCommandHandler extends SmtpInputCommandDirectReplyHandler {
 
   public SmtpReply getReply(SmtpInputContext smtpInputContext) {
 
-    String domainOrHostname = smtpInputContext.getSession().getGreeting().getDomainOrHostName();
+    String domainOrHostname = smtpInputContext.getSession().getGreeting().getRequestedHostOrDefault().getDomain().toString();
     return SmtpReply.create(SmtpReplyCode.CLOSING_QUITING_221, domainOrHostname + " Service closing transmission channel");
 
   }

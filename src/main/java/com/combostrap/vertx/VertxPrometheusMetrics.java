@@ -18,6 +18,7 @@ import io.vertx.micrometer.PrometheusScrapingHandler;
 import io.vertx.micrometer.VertxPrometheusOptions;
 import io.vertx.micrometer.backends.BackendRegistries;
 
+import java.util.Optional;
 import java.util.logging.Logger;
 
 
@@ -48,16 +49,18 @@ public class VertxPrometheusMetrics implements AutoCloseable {
     /**
      * Get the registry
      */
-    public PrometheusMeterRegistry getRegistry() {
+    public Optional<PrometheusMeterRegistry> getRegistry() {
         /**
          * By default, a unique registry is used and is shared across the Vert.x instances of the JVM.
          * We just show how to get another registry
          */
         MeterRegistry registry = BackendRegistries.getNow(REGISTRY_NAME);
         if (registry == null) {
-            throw new IllegalStateException("The registry (" + REGISTRY_NAME + ") was not found. Did you start with the MainLauncher or the test Vertx with Registry?");
+            // The registry is not found. Did you start with the MainLauncher or the test Vertx with Registry?");
+            return Optional.empty();
+
         }
-        return (PrometheusMeterRegistry) registry;
+        return Optional.of((PrometheusMeterRegistry) registry);
     }
 
     /**
@@ -69,8 +72,14 @@ public class VertxPrometheusMetrics implements AutoCloseable {
             // the default prometheus
             path = DEFAULT_METRICS_PATH;
         }
+
+        PrometheusMeterRegistry registry = getRegistry().orElse(null);
+        if (registry == null) {
+            LOGGER.warning("Prometheus /metrics point not mounted as no registry could be found");
+            return;
+        }
         LOGGER.info("Prometheus /metrics point mounted");
-        router.route(path).handler(PrometheusScrapingHandler.create(getRegistry()));
+        router.route(path).handler(PrometheusScrapingHandler.create(registry));
 
     }
 
@@ -83,7 +92,10 @@ public class VertxPrometheusMetrics implements AutoCloseable {
      */
     public void configEnableHistogramBuckets() {
         LOGGER.info("Enable Prometheus Histogram Buckets");
-        PrometheusMeterRegistry registry = getRegistry();
+        PrometheusMeterRegistry registry = getRegistry().orElse(null);
+        if (registry == null) {
+            return;
+        }
         registry.config().meterFilter(
                 new MeterFilter() {
                     @Override
@@ -101,7 +113,10 @@ public class VertxPrometheusMetrics implements AutoCloseable {
      * <a href="https://micrometer.io/docs/ref/jvm">...</a>
      */
     public void configEnableJvm() {
-        PrometheusMeterRegistry registry = getRegistry();
+        PrometheusMeterRegistry registry = getRegistry().orElse(null);
+        if (registry == null) {
+            return;
+        }
         new ClassLoaderMetrics().bindTo(registry);
         new JvmMemoryMetrics().bindTo(registry);
 

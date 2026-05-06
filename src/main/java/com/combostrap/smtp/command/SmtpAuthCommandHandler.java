@@ -98,7 +98,7 @@ public class SmtpAuthCommandHandler extends SmtpInputCommandDirectReplyHandler {
                 SmtpReply smtpReply = SmtpReply.create(SmtpReplyCode.CREDENTIAL_INVALID_535, "Credentials Invalid: They should be encoded in base 64. " + e.getMessage());
                 throw SmtpException.create(smtpReply, e);
             }
-            SmtpHost requestedHost = smtpSession.getGreeting().getRequestedHost().orElse(null);
+            SmtpMxHost requestedHost = smtpSession.getGreeting().getRequestedHost().orElse(null);
             if (requestedHost == null) {
                 // It should not happen as this check beforehand
                 throw SmtpException.create(SmtpReplyCode.SSL_REQUIRED_538, "To login, TLS is required. Use the port 587 or the command STARTTLS");

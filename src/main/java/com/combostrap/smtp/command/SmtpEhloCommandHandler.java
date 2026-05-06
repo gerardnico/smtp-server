@@ -87,7 +87,7 @@ public final class SmtpEhloCommandHandler extends SmtpInputCommandDirectReplyHan
      * Greetings
      */
     SmtpReply smtpReply = SmtpReply.create(SmtpReplyCode.OK_250)
-      .addHumanTextLine(session.getGreeting().getDomainOrHostName() + " at your service");
+      .addHumanTextLine(session.getGreeting().getRequestedHostOrDefault() + " at your service");
 
     /**
      * An EHLO command MAY be issued by a client later in the session.  If

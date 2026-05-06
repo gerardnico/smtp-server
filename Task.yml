@@ -1,0 +1,9 @@
+version: '3'
+
+tasks:
+  # Create cert for SSL
+  ssl:
+    cmds:
+      - |
+        cd src/test/resources/ssl
+        mkcert "*.example.dev" smtp.world.dev localhost 127.0.0.1 ::1

@@ -1,6 +1,8 @@
 package com.combostrap.smtp;
 
 import com.combostrap.common.JavaEnvs;
+import com.combostrap.type.DnsCastException;
+import com.combostrap.type.DnsName;
 import io.vertx.core.net.NetSocket;
 import io.vertx.core.net.SocketAddress;
 
@@ -17,7 +19,7 @@ public class SmtpGreeting implements SmtpSessionInteraction {
 
     private final SmtpSession smtpSession;
     private String sslProtocol;
-    private SmtpHost requestedHost;
+    private SmtpMxHost requestedHost;
     private SocketAddress clientAddress;
 
     public SmtpGreeting(SmtpSession smtpSession) {
@@ -44,7 +46,7 @@ public class SmtpGreeting implements SmtpSessionInteraction {
      * Determine the Requested host
      * <p>
      */
-    private Optional<SmtpHost> determineRequestedHost() throws SmtpException {
+    private Optional<SmtpMxHost> determineRequestedHost() throws SmtpException {
 
 
         String indicatedServerName = this.smtpSession.getSmtpSocket().getIndicatedServerName().orElse(null);
@@ -52,8 +54,15 @@ public class SmtpGreeting implements SmtpSessionInteraction {
             return Optional.empty();
         }
 
-        SmtpHost smtpHost = this.smtpSession.getSmtpService().getSmtpServer().getHostedHosts().get(indicatedServerName);
-        if(smtpHost == null) {
+        DnsName sniAsDnsName;
+        try {
+            sniAsDnsName = DnsName.create(indicatedServerName);
+        } catch (DnsCastException e) {
+            throw new RuntimeException("The SNI found on the connection (" + indicatedServerName + ") is not a valid DNS Name. Error:" + e.getMessage(), e);
+        }
+
+        SmtpMxHost smtpMxHost = this.smtpSession.getSmtpService().getSmtpServer().getHostedHosts().get(sniAsDnsName);
+        if (smtpMxHost == null) {
             SmtpException smtpException = SmtpException.create(SmtpReplyCode.CONNECTION_WITH_BAD_HOSTNAME_899, "The requested hostname (" + indicatedServerName + ") is unknown")
                     .setShouldQuit(true);
             if (!JavaEnvs.isDev()) {
@@ -61,7 +70,7 @@ public class SmtpGreeting implements SmtpSessionInteraction {
             }
             throw smtpException;
         }
-        return Optional.of(smtpHost);
+        return Optional.of(smtpMxHost);
 
     }
 
@@ -103,7 +112,7 @@ public class SmtpGreeting implements SmtpSessionInteraction {
          */
         return SmtpReply.create(
                 SmtpReplyCode.GREETING_220,
-                this.getRequestedHostOrDefault().getHostedHostname() + " " +
+                this.getRequestedHostOrDefault().getDomain() + " " +
                         this.smtpSession.getSmtpProtocol() + " " +
                         this.smtpSession.getSmtpService().getSmtpServer().getSoftwareName()
         );
@@ -111,33 +120,11 @@ public class SmtpGreeting implements SmtpSessionInteraction {
 
     @Override
     public String getSessionHistoryLine() {
-        return "Connection to " + this.getRequestedHostOrDefault().getHostedHostname() + " in " + this.sslProtocol + " with " + this.clientAddress + SmtpSyntax.LINE_DELIMITER;
+        return "Connection to " + this.getRequestedHostOrDefault().getDomain() + " in " + this.sslProtocol + " with " + this.clientAddress + SmtpSyntax.LINE_DELIMITER;
     }
 
     /**
      * Without TLS, we don't know the server requested
-     */
-    public SmtpHost getRequestedHostOrDefault() {
-
-        SmtpHost requestHost = getRequestedHost().orElse(null);
-        if (requestHost != null) {
-            return requestHost;
-        }
-        return this.smtpSession.getSmtpService().getSmtpServer().getDefaultHostedHost();
-
-    }
-
-    /**
-     * Without TLS, we don't know the server requested
-     */
-    public Optional<SmtpHost> getRequestedHost() {
-        if (this.requestedHost == null) {
-            return Optional.empty();
-        }
-        return Optional.of(this.requestedHost);
-    }
-
-    /**
      * This function return:
      * * the default hostname if we don't know the requested hostname
      * * the domain if we know the requested hostname
@@ -159,13 +146,25 @@ public class SmtpGreeting implements SmtpSessionInteraction {
      * 250-STARTTLS
      * 250 Ok
      */
-    public String getDomainOrHostName() {
+    public SmtpMxHost getRequestedHostOrDefault() {
 
-        SmtpHost requestedHost = this.getRequestedHost().orElse(null);
-        if (requestedHost != null) {
-            return requestedHost.getDomain().toString();
+        SmtpMxHost requestHost = getRequestedHost().orElse(null);
+        if (requestHost != null) {
+            return requestHost;
         }
-        return this.getRequestedHostOrDefault().getHostedHostname();
+        return this.smtpSession.getSmtpService().getSmtpServer().getDefaultHostedHost();
 
     }
+
+    /**
+     * Without TLS, we don't know the server requested
+     */
+    public Optional<SmtpMxHost> getRequestedHost() {
+        if (this.requestedHost == null) {
+            return Optional.empty();
+        }
+        return Optional.of(this.requestedHost);
+    }
+
+
 }

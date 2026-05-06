@@ -58,7 +58,7 @@ public class SmtpReceptionTracing {
       FWS +
       "BY" +
       FWS +
-      smtpSession.getGreeting().getRequestedHostOrDefault().getHostedHostname() +
+      smtpSession.getGreeting().getRequestedHostOrDefault().getDomain() +
       FWS +
       "with" +
       FWS +
