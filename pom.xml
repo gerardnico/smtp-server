@@ -30,7 +30,7 @@
             <dependency>
                 <groupId>io.vertx</groupId>
                 <artifactId>vertx-stack-depchain</artifactId>
-                <version>4.5.3</version>
+                <version>4.5.26</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -73,6 +73,34 @@
             <groupId>com.fasterxml.jackson.dataformat</groupId>
             <artifactId>jackson-dataformat-xml</artifactId>
         </dependency>
+        <!-- For reading config -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <!-- Config: the javax validation api (API just the annotations/interfaces) -->
+        <dependency>
+            <groupId>jakarta.validation</groupId>
+            <artifactId>jakarta.validation-api</artifactId>
+            <version>3.0.2</version>
+        </dependency>
+        <!-- Config: the javax validation - implementation (needed to actually run validation) -->
+        <!-- Source: https://mvnrepository.com/artifact/org.hibernate.validator/hibernate-validator -->
+        <dependency>
+            <groupId>org.hibernate.validator</groupId>
+            <artifactId>hibernate-validator</artifactId>
+            <version>9.1.0.Final</version>
+            <scope>compile</scope>
+        </dependency>
+        <!-- Json Schema Generation -->
+        <!-- Source: https://mvnrepository.com/artifact/com.github.victools/jsonschema-generator -->
+        <dependency>
+            <groupId>com.github.victools</groupId>
+            <artifactId>jsonschema-generator</artifactId>
+            <!-- Version 5 uses jackson 3 that is relocated to tools.jackson.... -->
+            <version>4.38.0</version>
+            <scope>compile</scope>
+        </dependency>
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
@@ -83,6 +111,13 @@
             <groupId>org.simplejavamail</groupId>
             <artifactId>simple-java-mail</artifactId>
             <version>8.12.6</version>
+            <exclusions>
+                <!-- Exclude the buggy one -->
+                <exclusion>
+                    <groupId>org.eclipse.angus</groupId>
+                    <artifactId>angus-mail</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <!-- To test chunking (ie BDAT command), otherwise we get this error.-->
         <!-- Suppressed: org.simplejavamail.internal.moduleloader.ModuleLoaderException: Batch module not found,-->
@@ -135,6 +170,11 @@
             <artifactId>apache-jspf-resolver</artifactId>
             <version>1.0.5</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-jdk14</artifactId>
+            <version>2.0.17</version>
         </dependency>
     </dependencies>
 

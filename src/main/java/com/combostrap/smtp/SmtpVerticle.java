@@ -110,9 +110,11 @@ public class SmtpVerticle extends AbstractVerticle {
                     /**
                      * Promise handling
                      */
-                    return Future.join(netServers)
+                    return Future
+                            .join(netServers)
                             .onFailure(err -> {
-                                LOGGER.log(Level.SEVERE,"Smtp server could not be started. Error: "+err.getMessage(), err);
+                                // To get the configuration errors
+                                LOGGER.log(Level.SEVERE, "Smtp server could not be started. Error: " + err.getMessage(), err);
                                 this.handleVerticleFailure(verticlePromise, err);
                             })
                             .compose(result -> {

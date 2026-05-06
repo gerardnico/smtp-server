@@ -9,16 +9,18 @@ import java.util.logging.Logger;
 public class VertxNetServer {
     private static final Logger LOGGER = Logger.getLogger(VertxNetServer.class.getName());
     private final builder builder;
-    private final TowerFailureHandler failureHandler;
     private final ServerHealth serverHealth;
-    private ServerSsl ssl;
+    private final ServerSsl ssl;
 
     public VertxNetServer(builder builder) {
         this.builder = builder;
+
         /**
-         * Failure Handler (Always on)
+         * Global Failure Handler (Always on)
+         * This only catches exceptions thrown inside handlers, not silently-dropped failed futures.
+         * A Future.join(...) that nobody listens to won't trigger this.
          */
-        failureHandler = new TowerFailureHandler(this);
+        TowerFailureHandler failureHandler = new TowerFailureHandler(this);
         builder.vertx.exceptionHandler(failureHandler);
         LOGGER.info("Vertx Failure Handler started");
 
@@ -53,9 +55,6 @@ public class VertxNetServer {
         return MainLauncher.prometheus.getRegistry();
     }
 
-    public TowerFailureHandler getFailureHandler() {
-        return null;
-    }
 
     public String getListeningHost() {
         return builder.listeningHost;
