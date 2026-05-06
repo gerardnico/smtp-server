@@ -2,7 +2,7 @@
 #
 # The separators in key are points
 # to be consistent with the configuration of Java Mail
-software.name: Eraldy # software name advertised in the banner
+softwareName: Eraldy # software name advertised in the banner
 auth.localhost.required: false # localhost does not need any authentication
 session.replay: true # print the session on stdout
 # The services started by ports

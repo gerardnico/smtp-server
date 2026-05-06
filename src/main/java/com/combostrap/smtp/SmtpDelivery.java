@@ -1,6 +1,5 @@
 package com.combostrap.smtp;
 
-import com.combostrap.vertx.ConfigAccessor;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
@@ -14,30 +13,30 @@ public class SmtpDelivery implements Handler<Long> {
 
     public static final String DELIVERY_RUN_AFTER_RECEPTION_CONF = "delivery.run.after.reception";
     private static final String DELIVERY_RETRY_INTERVAL_KEY = "delivery.retry.interval";
-    private static final Integer DEFAULT_INTERVAL = 5;
     public static final String DELIVERY_RUN_INTERVAL_KEY = "delivery.run.interval";
     static Logger LOGGER = Logger.getLogger(SmtpDelivery.class.getName());
-    private static final int DEFAULT_RETRY_INTERVAL = 15;
+
     private final Map<Integer, SmtpDeliveryEnvelope> deliveryQueue = new HashMap<>();
     private final Integer retryIntervalBetweenFailures;
-    private final Boolean immediateDelivery;
+    private final SmtpDeliveryConf deliveryConfig;
+
     private boolean isRunning = false;
 
 
-    public SmtpDelivery(Vertx vertx, ConfigAccessor configAccessor) {
+    public SmtpDelivery(Vertx vertx, SmtpDeliveryConf configAccessor) {
 
-        this.immediateDelivery = configAccessor.getBoolean(DELIVERY_RUN_AFTER_RECEPTION_CONF, false);
-        LOGGER.info("Delivery does " + (this.immediateDelivery ? "" : "not") + " run after reception");
+        this.deliveryConfig = configAccessor;
+        LOGGER.info("Delivery does " + (configAccessor.immediateDelivery ? "" : "not") + " run after reception");
 
-        Integer deliveryInterval = configAccessor.getInteger(DELIVERY_RUN_INTERVAL_KEY, DEFAULT_INTERVAL);
+        Integer deliveryInterval = configAccessor.runInterval;
         if (deliveryInterval > 0) {
-            LOGGER.info("Delivery run interval (" + DELIVERY_RETRY_INTERVAL_KEY + ") set to " + deliveryInterval + " minutes");
-            vertx.setPeriodic(deliveryInterval * 60 * 1000, this);
+            LOGGER.info("Delivery run interval set to " + deliveryInterval + " minutes");
+            vertx.setPeriodic((long) deliveryInterval * 60 * 1000, this);
         } else {
             LOGGER.info("Delivery run at interval disabled. The interval value (" + deliveryInterval + ") of the configuration (" + DELIVERY_RETRY_INTERVAL_KEY + ") is negative or null.");
         }
 
-        this.retryIntervalBetweenFailures = configAccessor.getInteger(DELIVERY_RETRY_INTERVAL_KEY, DEFAULT_RETRY_INTERVAL);
+        this.retryIntervalBetweenFailures = configAccessor.retryInterval;
         LOGGER.info("Delivery retry interval (" + DELIVERY_RETRY_INTERVAL_KEY + ") between failures set to " + this.retryIntervalBetweenFailures + " minutes");
 
     }
@@ -92,7 +91,7 @@ public class SmtpDelivery implements Handler<Long> {
         int key = enveloppe.hashCode();
         LOGGER.info("Reception of the enveloppe (" + key + "), Message Id: " + enveloppe.getMimeMessage().getMessageId());
         this.deliveryQueue.put(key, enveloppe);
-        if (this.immediateDelivery) {
+        if (this.deliveryConfig.immediateDelivery) {
             this.run();
         }
     }

@@ -5,7 +5,6 @@ import com.combostrap.dns.DnsClient;
 import com.combostrap.dns.DnsIllegalArgumentException;
 import com.combostrap.dns.XBillDnsClient;
 import com.combostrap.email.BMailInternetAddress;
-import com.combostrap.smtp.command.SmtpEhloCommandHandler;
 import com.combostrap.smtp.exceptions.ConfigIllegalException;
 import com.combostrap.smtp.mailbox.SmtpMailbox;
 import com.combostrap.smtp.mailbox.SmtpMailboxForward;
@@ -13,14 +12,9 @@ import com.combostrap.smtp.mailbox.SmtpMailboxS3;
 import com.combostrap.smtp.mailbox.SmtpMailboxStdout;
 import com.combostrap.smtp.milter.DmarcMilter;
 import com.combostrap.smtp.milter.SmtpMilter;
-import com.combostrap.type.CastException;
-import com.combostrap.type.Casts;
 import com.combostrap.type.DnsName;
-import com.combostrap.vertx.ConfigAccessor;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.net.SSLOptions;
 import io.vertx.core.net.SocketAddress;
 import jakarta.mail.internet.AddressException;
 
@@ -39,30 +33,11 @@ import static com.combostrap.smtp.SmtpSyntax.LOG_TAB;
 public class SmtpServer {
 
     private static final Logger LOGGER = Logger.getLogger(SmtpServer.class.getName());
-    static final String SESSION_REPLAY_CONF = "session.replay";
 
-    /**
-     * The software name is given in the {@link SmtpEhloCommandHandler Ehlo command}
-     */
-    private final String softwareName;
 
     private final Map<SmtpSession, SmtpSession> activeSessions = new HashMap<>();
-    /**
-     * Not fewer than 100
-     * <a href="https://datatracker.ietf.org/doc/html/rfc5321#section-4.5.3.1.8">Recipients Buffer limits</a>
-     */
-    private static final int MAXIMUM_RECIPIENT = 100;
-    private final int maxTotalConnections;
-    private final int maxConnectionBySource;
-    /**
-     * The maximum number of exception by session
-     */
-    private final int maximumExceptionCountBySession;
-    /**
-     * Max Size of a Message
-     */
-    private final int maxMessageSizeInBytes;
-    private final int maxRecipientsByEmail;
+
+
     /**
      * {@link SocketAddress} has a hash code making it unique
      * The {@link SmtpSocket#getRemoteAddress()}
@@ -71,15 +46,15 @@ public class SmtpServer {
 
     private final Map<String, SmtpHost> hostedDomains = new HashMap<>();
     private final SmtpHost defaultHostedHost;
-    private final int idleTimeoutSecond;
-    private final long handShakeTimeoutSecond;
-    private final boolean localhostAuthenticationRequired;
+
+
     private final Map<String, SmtpDomain> smtpDomains = new HashMap<>();
     private final SmtpReception smtpReception;
     private final SmtpDelivery smtpDelivery;
-    private final boolean sessionReplayEnabled;
+
     private final boolean enableDnsBlockList;
     private final DnsClient dnsClient;
+    private final SmtpConfigBean config;
 
     public List<SmtpService> getSmtpServices() {
         return services;
@@ -88,75 +63,47 @@ public class SmtpServer {
     private final List<SmtpService> services = new ArrayList<>();
 
 
-    // Session Purge
-    Integer DEFAULT_IDLE_TIMEOUT_SECOND = 5 * 60;
-
-    public SmtpServer(AbstractVerticle smtpVerticle, ConfigAccessor configAccessor) throws ConfigIllegalException {
+    public SmtpServer(AbstractVerticle smtpVerticle, SmtpConfigBean config) throws ConfigIllegalException {
 
 
-        long defaultSslHandshakeTimeout = SSLOptions.DEFAULT_SSL_HANDSHAKE_TIMEOUT;
-        if (JavaEnvs.isIsIdeDebugging()) {
-            /**
-             * One hour: used when debugging {@link com.combostrap.smtp.command.SmtpStartTlsCommandHandler STARTTLS}
-             * command
-             */
-            defaultSslHandshakeTimeout = 60 * 60;
-        }
-        handShakeTimeoutSecond = configAccessor.getLong("handshake.timeout.second", defaultSslHandshakeTimeout);
+        this.config = config;
 
         /**
          * General conf
          */
-        this.softwareName = configAccessor.getString("software.name", "Smtp Server");
-        LOGGER.info(SmtpSyntax.LOG_TAB + "Software Name set to " + this.softwareName);
+        LOGGER.info(SmtpSyntax.LOG_TAB + "Software Name set to " + config.softwareName);
 
         /**
          * Session Conf
          */
-        idleTimeoutSecond = configAccessor.getInteger("session.idle.timeout.second", DEFAULT_IDLE_TIMEOUT_SECOND);
-        LOGGER.info(LOG_TAB + "Session idle timeout set to " + idleTimeoutSecond);
-        smtpVerticle.getVertx().setPeriodic(idleTimeoutSecond + 20, this::removeIdleSessions);
-        this.sessionReplayEnabled = configAccessor.getBoolean(SESSION_REPLAY_CONF, false);
-        LOGGER.info(LOG_TAB + "Session replay set to " + this.sessionReplayEnabled);
+        LOGGER.info(LOG_TAB + "Session idle timeout set to " + config.limits.idleTimeoutSecond);
+        smtpVerticle.getVertx().setPeriodic(config.limits.idleTimeoutSecond + 20, this::removeIdleSessions);
+        LOGGER.info(LOG_TAB + "Session replay set to " + config.sessionReplayEnabled);
 
-        /**
-         * Authentication from Localhost is not required by default
-         */
-        this.localhostAuthenticationRequired = configAccessor.getBoolean("auth.localhost.required", false);
 
         /**
          * Max, Limit Settings, Quotas
          */
         LOGGER.info(LOG_TAB + "Smtp Max, Limit Settings:");
-        this.maxTotalConnections = configAccessor.getInteger("max.sessions", 50);
-        LOGGER.info(LOG_TAB + "Max total connections set to " + this.maxTotalConnections);
-        this.maxConnectionBySource = configAccessor.getInteger("max.sessions.by.ip", 3);
-        LOGGER.info(LOG_TAB + "Max connection count by IP set to " + this.maxConnectionBySource);
-        this.maxMessageSizeInBytes = configAccessor.getInteger("max.message.size.bytes", 1048576);
-        LOGGER.info(SmtpSyntax.LOG_TAB + "Max message size in bytes set to " + this.maxMessageSizeInBytes);
-        this.maximumExceptionCountBySession = configAccessor.getInteger("max.exception.count.by.session", 3);
-        LOGGER.info(SmtpSyntax.LOG_TAB + "Max exceptions by session set to " + this.maximumExceptionCountBySession);
-        this.maxRecipientsByEmail = configAccessor.getInteger("max.recipients", MAXIMUM_RECIPIENT);
-        LOGGER.info(SmtpSyntax.LOG_TAB + "Max recipients by email set to " + this.maxRecipientsByEmail);
+        LOGGER.info(LOG_TAB + "Max total connections set to " + config.limits.maxTotalConnections);
+
+        LOGGER.info(LOG_TAB + "Max connection count by IP set to " + config.limits.maxConnectionByIp);
+        LOGGER.info(SmtpSyntax.LOG_TAB + "Max message size in bytes set to " + config.limits.maxMessageSizeInBytes);
+
+        LOGGER.info(SmtpSyntax.LOG_TAB + "Max exceptions by session set to " + config.limits.maximumExceptionCountBySession);
+        LOGGER.info(SmtpSyntax.LOG_TAB + "Max recipients by email set to " + config.limits.maxRecipientsByEmail);
 
         /**
          * Host(s) settings
          */
         LOGGER.info("Host(s) Settings:");
-        String smtpHostKey = "host";
-        String host = configAccessor.getString(smtpHostKey);
-        if (host == null) {
-            throw new ConfigIllegalException("The host configuration (" + smtpHostKey + ") is mandatory and was not found");
-        }
-        String hostedDomainsConfKey = "hosts";
-        JsonObject hostedDomainsConfiguration = configAccessor.getJsonObject(hostedDomainsConfKey);
-        if (hostedDomainsConfiguration == null) {
-            throw new ConfigIllegalException("The hosted domains configuration (" + hostedDomainsConfKey + ") is mandatory and was not found");
-        }
-        for (String virtualHostnameString : hostedDomainsConfiguration.getMap().keySet()) {
-            SmtpHost.conf smtpVirtualHostConf = SmtpHost.createOf(virtualHostnameString);
-            JsonObject hostedDomainConfigurationData = hostedDomainsConfiguration.getJsonObject(virtualHostnameString);
-            String domainName = hostedDomainConfigurationData.getString("domain");
+
+        String host = config.listeningHost;
+
+
+        for (Map.Entry<String, SmtpHostConfig> virtualHostnameString : config.hosts.entrySet()) {
+
+            String domainName = virtualHostnameString.getKey();
             if (domainName == null) {
                 throw new ConfigIllegalException("The domain for the hostname (" + virtualHostnameString + ") is mandatory");
             }
@@ -166,20 +113,9 @@ public class SmtpServer {
             } catch (DnsIllegalArgumentException e) {
                 throw new ConfigIllegalException("The domain name (" + domainName + ") for the hostname (" + virtualHostnameString + ") is not valid");
             }
-            smtpVirtualHostConf.setHostedDomain(smtpDomain);
-            String postMasterEmailConf = hostedDomainConfigurationData.getString("postmaster");
-            if (postMasterEmailConf == null) {
-                throw new ConfigIllegalException("The postmaster email for the domain (" + virtualHostnameString + ") is mandatory");
-            }
-            smtpVirtualHostConf.setPostmasterEmail(postMasterEmailConf);
-            String keyPath = hostedDomainConfigurationData.getString("key");
-            smtpVirtualHostConf.setPrivateKeyPath(keyPath);
-            String certificatePath = hostedDomainConfigurationData.getString("cert");
-            smtpVirtualHostConf.setCertificatePath(certificatePath);
 
-            SmtpHost smtpHost = smtpVirtualHostConf.build();
-
-            this.hostedDomains.put(virtualHostnameString, smtpHost);
+            SmtpHost smtpHost = new SmtpHost(domainName, smtpDomain, virtualHostnameString.getValue());
+            this.hostedDomains.put(domainName, smtpHost);
             LOGGER.info(LOG_TAB + "Virtual Host added: " + smtpHost.getHostedHostname() + " (Domain: " + smtpHost.getDomain() + ", Postmaster: " + smtpHost.getPostmaster().getPostmasterAddressInConfiguration() + ")");
         }
         this.defaultHostedHost = this.hostedDomains.get(host);
@@ -190,19 +126,12 @@ public class SmtpServer {
         /**
          * Smtp Services
          */
-        String servicesConfKey = "services";
-        JsonObject servicesConfiguration = configAccessor.getJsonObject(servicesConfKey);
-        if (servicesConfiguration == null) {
-            throw new ConfigIllegalException("The service configuration (" + servicesConfKey + ") is mandatory and was not found");
-        }
-        for (String serviceKey : servicesConfiguration.getMap().keySet()) {
-            Integer servicePort;
-            try {
-                servicePort = Casts.cast(serviceKey, Integer.class);
-            } catch (CastException e) {
-                throw new ConfigIllegalException("The key name of a service should be a port number. " + serviceKey + " is not an integer", e);
-            }
-            SmtpService smtpService = new SmtpService(this, servicePort, configAccessor.getSubConfigAccessor(servicesConfKey, serviceKey));
+
+
+        for (Map.Entry<Integer, SmtpServiceConfig> serviceKey : config.services.entrySet()) {
+            Integer servicePort = serviceKey.getKey();
+
+            SmtpService smtpService = new SmtpService(this, servicePort, serviceKey.getValue());
             this.services.add(smtpService);
             LOGGER.info(LOG_TAB + "Service added: " + smtpService);
         }
@@ -230,58 +159,55 @@ public class SmtpServer {
          * Define the users
          * Smtp Users
          */
-        String usersConfKey = "users";
-        JsonObject usersConfiguration = configAccessor.getJsonObject(usersConfKey);
-        if (usersConfiguration == null) {
-            throw new ConfigIllegalException("The users configuration (" + usersConfKey + ") is mandatory and was not found");
-        }
-        for (String domain : usersConfiguration.getMap().keySet()) {
-
+        for (Map.Entry<String, Map<String, SmtpUserConf>> userEntry : config.users.entrySet()) {
+            String domain = userEntry.getKey();
             SmtpDomain smtpDomain = this.smtpDomains.get(domain.toLowerCase());
             if (smtpDomain == null) {
                 throw new ConfigIllegalException("The users domain (" + domain + ") was not found in the hosts");
             }
-            JsonObject users = usersConfiguration.getJsonObject(domain);
-            for (String userName : users.getMap().keySet()) {
+            for (Map.Entry<String, SmtpUserConf> user : userEntry.getValue().entrySet()) {
 
-                ConfigAccessor userConfigAccessor = configAccessor.getSubConfigAccessor(usersConfKey, domain, userName);
-                ConfigAccessor mailBoxConfigAccessor = userConfigAccessor.getSubConfigAccessor("mailbox");
+                String username = user.getKey();
+                SmtpUserConf userConf = user.getValue();
+                SmtpMailBoxConf mailBox = userConf.mailbox;
                 Class<? extends SmtpMailbox> smtpMailboxClass;
-                if (mailBoxConfigAccessor == null) {
+                Map<String,Object> mailBoxProps = new HashMap<>();
+                if (mailBox == null) {
                     smtpMailboxClass = SmtpMailboxStdout.class;
                 } else {
-                    String type = mailBoxConfigAccessor.getString("type");
+                    String type = mailBox.type;
                     if (type == null) {
-                        throw new ConfigIllegalException("The type of mailbox of the user (" + userName + ") is not set");
+                        throw new ConfigIllegalException("The type of mailbox of the user (" + username + ") is not set");
                     }
                     smtpMailboxClass = mailboxClasses.get(type);
                     if (smtpMailboxClass == null) {
-                        throw new ConfigIllegalException("The type (" + type + ") of mailbox of the user (" + userName + ") is unknown");
+                        throw new ConfigIllegalException("The type (" + type + ") of mailbox of the user (" + username + ") is unknown");
                     }
+                    mailBoxProps = mailBox.props;
                 }
 
                 List<SmtpMilter> mailBoxMiltersObject = new ArrayList<>();
-                if (mailBoxConfigAccessor != null) {
-                    List<String> mailBoxMiltersConf = mailBoxConfigAccessor.getList("milters");
+                if (mailBox != null) {
+                    List<String> mailBoxMiltersConf = mailBox.milters;
                     for (String mailboxMilterConfKey : mailBoxMiltersConf) {
                         SmtpMilter mailBoxMilterObject = milters.get(mailboxMilterConfKey);
                         if (mailBoxMilterObject == null) {
-                            throw new ConfigIllegalException("The milter (" + mailboxMilterConfKey + ") of the mailbox of the user (" + userName + ") is unknown");
+                            throw new ConfigIllegalException("The milter (" + mailboxMilterConfKey + ") of the mailbox of the user (" + username + ") is unknown");
                         }
                         mailBoxMiltersObject.add(mailBoxMilterObject);
                     }
                 }
 
-                String password = userConfigAccessor.getString("password");
-                SmtpUser smtpUser = SmtpUser.createFrom(smtpDomain, userName, password);
+                String password = userConf.password;
+                SmtpUser smtpUser = SmtpUser.createFrom(smtpDomain, username, password);
                 smtpDomain.addUser(smtpUser);
 
                 SmtpMailbox smtpMailbox;
                 try {
-                    smtpMailbox = smtpMailboxClass.getDeclaredConstructor(SmtpUser.class, Vertx.class, List.class, ConfigAccessor.class).newInstance(smtpUser, smtpVerticle.getVertx(), mailBoxMiltersObject, mailBoxConfigAccessor);
+                    smtpMailbox = smtpMailboxClass.getDeclaredConstructor(SmtpUser.class, Vertx.class, List.class, Map.class).newInstance(smtpUser, smtpVerticle.getVertx(), mailBoxMiltersObject, mailBoxProps);
                 } catch (InstantiationException | IllegalAccessException | NoSuchMethodException |
                          InvocationTargetException e) {
-                    throw new ConfigIllegalException("Error while creating the mailbox (" + smtpMailboxClass.getName() + ") of the user (" + userName + ")", e);
+                    throw new ConfigIllegalException("Error while creating the mailbox (" + smtpMailboxClass.getName() + ") of the user (" + user + ")", e);
                 }
                 smtpUser.setMailBox(smtpMailbox);
 
@@ -293,12 +219,10 @@ public class SmtpServer {
         /**
          * Reception/Delivery
          */
-        // false is the default because:
-        // * on a cloud hosting, the DNS is public, and it's not supported by SpamHaus because they can't rate limit
-        // * the filtering happens on ipv4, not ipv6
-        this.enableDnsBlockList = configAccessor.getBoolean("reception.enable.dns.block.list", false);
+        this.enableDnsBlockList = config.reception.enableDnsBlockList;
         LOGGER.info(LOG_TAB + "Dns Block List check set to " + this.enableDnsBlockList);
-        this.smtpDelivery = new SmtpDelivery(smtpVerticle.getVertx(), configAccessor);
+
+        this.smtpDelivery = new SmtpDelivery(smtpVerticle.getVertx(), config.delivery);
         this.smtpReception = new SmtpReception(smtpDelivery);
 
 
@@ -315,7 +239,7 @@ public class SmtpServer {
         return smtpDomain;
     }
 
-    public static SmtpServer create(AbstractVerticle smtpVerticle, ConfigAccessor configAccessor) throws ConfigIllegalException {
+    public static SmtpServer create(AbstractVerticle smtpVerticle, SmtpConfigBean configAccessor) throws ConfigIllegalException {
         return new SmtpServer(smtpVerticle, configAccessor);
     }
 
@@ -329,9 +253,9 @@ public class SmtpServer {
         LOGGER.fine("There is " + activeSessions.size() + " session");
         if (!JavaEnvs.isIsIdeDebugging()) {
             for (SmtpSession smtpSession : activeSessions.values()) {
-                LocalDateTime deadlineTime = smtpSession.getLastInteractiveTime().plusSeconds(this.idleTimeoutSecond);
+                LocalDateTime deadlineTime = smtpSession.getLastInteractiveTime().plusSeconds(this.config.limits.idleTimeoutSecond);
                 if (deadlineTime.isBefore(now)) {
-                    smtpSession.closeSessionWithReply(SmtpReply.create(SmtpReplyCode.SERVICE_NOT_AVAILABLE_421, "Connection was idle for more than " + this.idleTimeoutSecond + " seconds. Bye."));
+                    smtpSession.closeSessionWithReply(SmtpReply.create(SmtpReplyCode.SERVICE_NOT_AVAILABLE_421, "Connection was idle for more than " + this.config.limits.idleTimeoutSecond + " seconds. Bye."));
                 }
             }
         }
@@ -349,7 +273,7 @@ public class SmtpServer {
     }
 
     public boolean tooMuchConnection() {
-        return activeSessions.size() > maxTotalConnections;
+        return activeSessions.size() > this.config.limits.maxTotalConnections;
     }
 
     /**
@@ -364,7 +288,7 @@ public class SmtpServer {
         }
 
         Integer maxBySource = this.totalConnectionsByIp.getOrDefault(smtpSession.getSmtpSocket().getRemoteAddress(), 0);
-        if (maxBySource > maxConnectionBySource) {
+        if (maxBySource > this.config.limits.maxConnectionByIp) {
             throw SmtpException.create(SmtpReplyCode.SERVICE_NOT_AVAILABLE_421, "Too many connections for your ip, try again later")
                     .setShouldQuit(true);
         }
@@ -383,31 +307,28 @@ public class SmtpServer {
     }
 
     public int getIdleTimeoutSecond() {
-        return this.idleTimeoutSecond;
+        return this.config.limits.idleTimeoutSecond;
     }
 
     public String getSoftwareName() {
-        return this.softwareName;
+        return this.config.softwareName;
     }
 
     public int maximumExceptionBySession() {
-        return this.maximumExceptionCountBySession;
+        return this.config.limits.maximumExceptionCountBySession;
     }
 
     public int getMaxMessageSizeInBytes() {
-        return this.maxMessageSizeInBytes;
+        return this.config.limits.maxMessageSizeInBytes;
     }
 
     public int getMaxRecipientsByEmail() {
-        return this.maxRecipientsByEmail;
+        return this.config.limits.maxRecipientsByEmail;
     }
 
-    public long getHandShakeTimeoutSecond() {
-        return this.handShakeTimeoutSecond;
-    }
 
     public boolean getLocalHostAuthenticationRequired() {
-        return localhostAuthenticationRequired;
+        return this.config.localhostAuthenticationRequired;
     }
 
 
@@ -454,7 +375,7 @@ public class SmtpServer {
     }
 
     public boolean isSessionReplayEnabled() {
-        return this.sessionReplayEnabled;
+        return this.config.sessionReplayEnabled;
     }
 
 
@@ -464,5 +385,9 @@ public class SmtpServer {
 
     public DnsClient getDnsClient() {
         return this.dnsClient;
+    }
+
+    public long getHandShakeTimeoutSecond() {
+        return this.config.limits.handShakeTimeoutSecond;
     }
 }

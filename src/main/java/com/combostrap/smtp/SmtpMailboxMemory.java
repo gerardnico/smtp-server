@@ -2,12 +2,12 @@ package com.combostrap.smtp;
 
 import com.combostrap.smtp.mailbox.SmtpMailbox;
 import com.combostrap.smtp.milter.SmtpMilter;
-import com.combostrap.vertx.ConfigAccessor;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class SmtpMailboxMemory extends SmtpMailbox {
 
@@ -15,10 +15,10 @@ public class SmtpMailboxMemory extends SmtpMailbox {
 
   /**
    * @param vertx          - the vertx in case an async should be run
-   * @param configAccessor - the configuration
+   * @param props - the configuration
    */
-  public SmtpMailboxMemory(SmtpUser smtpUser, Vertx vertx, List<SmtpMilter> milters, ConfigAccessor configAccessor) {
-    super(smtpUser, vertx, milters, configAccessor);
+  public SmtpMailboxMemory(SmtpUser smtpUser, Vertx vertx, List<SmtpMilter> milters, Map<String,Object> props) {
+    super(smtpUser, vertx, milters, props);
   }
 
   @Override

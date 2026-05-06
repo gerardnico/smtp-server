@@ -1,5 +1,6 @@
 package com.combostrap.vertx;
 
+import com.combostrap.smtp.SmtpConfigBean;
 import com.combostrap.smtp.exceptions.NoConfException;
 
 import java.nio.file.Files;
@@ -16,11 +17,6 @@ import java.nio.file.Paths;
  */
 public class ServerSsl {
 
-    /**
-     * The default path for the key
-     */
-    public static final String DEV_KEY_PEM = "../cert/key.pem";
-    public static final String DEV_CERT_PEM = "../cert/cert.pem";
 
     public Path getKey() {
         return key;
@@ -39,12 +35,11 @@ public class ServerSsl {
     Path key;
     Path cert;
 
-    public static ServerSsl create(ConfigAccessor configAccessor)  {
+    public static ServerSsl create(SmtpConfigBean configAccessor)  {
 
         Path sslKeyPath;
-        String sslKeyKey = "ssl.key";
         try {
-            sslKeyPath = Paths.get((String) configAccessor.getMandatoryValue(sslKeyKey));
+            sslKeyPath = Paths.get(configAccessor.sslKey);
         } catch (NoConfException e) {
             throw new IllegalStateException(e.getMessage(), e);
         }
@@ -53,9 +48,8 @@ public class ServerSsl {
         }
 
         Path sslCertPath;
-        String sslKeyCert = "ssl.cert";
         try {
-            sslCertPath = Paths.get((String) configAccessor.getMandatoryValue(sslKeyCert));
+            sslCertPath = Paths.get(configAccessor.sslCert);
         } catch (NoConfException e) {
             throw new IllegalStateException(e.getMessage(), e);
         }

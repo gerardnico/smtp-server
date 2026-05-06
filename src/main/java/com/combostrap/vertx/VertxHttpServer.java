@@ -100,7 +100,6 @@ public class VertxHttpServer {
         private boolean addWebLog;
         private boolean isBehindProxy;
         private boolean enableMetrics;
-        private boolean enableFailureHandler;
 
         public builder(VertxNetServer server) {
             this.netServer = server;
@@ -138,13 +137,13 @@ public class VertxHttpServer {
 
         public VertxHttpServer build() {
             VertxHttpServer httpServer = new VertxHttpServer(this);
-            httpServer.router = this.buildRouter(httpServer);
+            httpServer.router = this.buildRouter();
 
 
             return httpServer;
         }
 
-        private Router buildRouter(VertxHttpServer httpServer) {
+        private Router buildRouter() {
             Vertx vertx = this.netServer.getVertx();
             Router router = Router.router(vertx);
             if (this.addBodyHandler) {
@@ -156,8 +155,7 @@ public class VertxHttpServer {
                         .create()
                         .setHandleFileUploads(true)
                         .setBodyLimit(bodyLimit5mb);
-                final String BODY_HANDLER_CONF = "body.handler.upload-dir";
-                String uploadDir = this.netServer.getConfigAccessor().getString(BODY_HANDLER_CONF);
+                String uploadDir = this.netServer.getConfigAccessor().httpUploadDir;
                 if (uploadDir == null) {
                     try {
                         uploadDir = Javas.getBuildDirectory(VertxHttpServer.class).resolve("vertx-uploaded-files").toAbsolutePath().toString();

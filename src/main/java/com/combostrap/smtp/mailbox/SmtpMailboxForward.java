@@ -3,16 +3,16 @@ package com.combostrap.smtp.mailbox;
 import com.combostrap.smtp.SmtpMessage;
 import com.combostrap.smtp.SmtpUser;
 import com.combostrap.smtp.milter.SmtpMilter;
-import com.combostrap.vertx.ConfigAccessor;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 
 import java.util.List;
+import java.util.Map;
 
 public class SmtpMailboxForward extends SmtpMailbox {
 
-  public SmtpMailboxForward(SmtpUser smtpUser, Vertx vertx, List<SmtpMilter> milters, ConfigAccessor configAccessor) {
-    super(smtpUser, vertx, milters, configAccessor);
+  public SmtpMailboxForward(SmtpUser smtpUser, Vertx vertx, List<SmtpMilter> milters, Map<String,Object> props) {
+    super(smtpUser, vertx, milters, props);
   }
 
   /**

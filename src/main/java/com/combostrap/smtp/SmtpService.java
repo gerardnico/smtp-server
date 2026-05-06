@@ -1,6 +1,5 @@
 package com.combostrap.smtp;
 
-import com.combostrap.vertx.ConfigAccessor;
 import io.vertx.core.net.NetSocket;
 
 import javax.net.ssl.SSLPeerUnverifiedException;
@@ -37,37 +36,26 @@ public class SmtpService {
     private final boolean startTlsEnabled;
     private final boolean startTlsRequired;
 
-    private final Boolean enableChunking;
-    /**
-     * Enable or disable ({@link SmtpPipelining})
-     */
-    private final Boolean enablePipelining;
+
+    private final SmtpServer smtpServer;
+
+
+    private final int listeningPort;
+    private final Boolean enableSpf;
+    private final boolean enableDkim;
+
     /**
      * Enable or disable {@link SmtpInputType#BINARYMIME}
      * Binary Mime is never supported, nor implemented in client library
      * But there is some code around that we kept for now
      */
     private final boolean enableBinaryMime;
-    private final SmtpServer smtpServer;
-    private final Boolean requireValidPeerCertificate;
-    /**
-     * Authentication is required before any command
-     */
-    private final Boolean authRequired;
-    /**
-     * Is AUTH enabled
-     */
-    private final boolean authEnabled;
-
-    private final Boolean tlsEnabled;
-    private final Boolean sniEnabled;
-    private final int listeningPort;
-    private final Boolean enableSpf;
-    private final boolean enableDkim;
+    private final SmtpServiceConfig config;
 
 
-    public SmtpService(SmtpServer smtpServer, Integer port, ConfigAccessor configAccessor) {
+    public SmtpService(SmtpServer smtpServer, Integer port, SmtpServiceConfig configAccessor) {
 
+        this.config = configAccessor;
         /**
          * Service settings
          */
@@ -83,29 +71,26 @@ public class SmtpService {
         /**
          * Configuration: SSL and StartTLS
          */
-        this.tlsEnabled = configAccessor.getBoolean("tls.enabled", false);
-        LOGGER.info(SmtpSyntax.LOG_TAB + "TLS is " + (this.tlsEnabled ? "enabled" : "disabled"));
-        this.sniEnabled = configAccessor.getBoolean("sni.enabled", true);
-        LOGGER.info(SmtpSyntax.LOG_TAB + "SNI is " + (this.sniEnabled ? "enabled" : "disabled"));
-        if (!this.tlsEnabled) {
-            this.startTlsEnabled = configAccessor.getBoolean("starttls.enabled", true);
-            this.startTlsRequired = configAccessor.getBoolean("starttls.required", false);
+        LOGGER.info(SmtpSyntax.LOG_TAB + "TLS is " + (configAccessor.tlsEnabled ? "enabled" : "disabled"));
+
+        LOGGER.info(SmtpSyntax.LOG_TAB + "SNI is " + (configAccessor.sniEnabled ? "enabled" : "disabled"));
+        if (!configAccessor.tlsEnabled) {
+            this.startTlsEnabled = configAccessor.startTlsEnabled;
+            this.startTlsRequired = configAccessor.startTlsRequired;
         } else {
             this.startTlsEnabled = false;
             this.startTlsRequired = false;
         }
         LOGGER.info(SmtpSyntax.LOG_TAB + "StartTLS is " + (this.startTlsEnabled ? "enabled" : "disabled"));
         LOGGER.info(SmtpSyntax.LOG_TAB + "StartTLs Required is " + (this.startTlsRequired ? "enabled" : "disabled"));
-        this.requireValidPeerCertificate = configAccessor.getBoolean("requireValidPeerCertificate", false);
-        LOGGER.info(SmtpSyntax.LOG_TAB + "Required Valid Peer certificate is " + (this.requireValidPeerCertificate ? "enabled" : "disabled"));
+        LOGGER.info(SmtpSyntax.LOG_TAB + "Required Valid Peer certificate is " + (configAccessor.requireValidPeerCertificate ? "enabled" : "disabled"));
 
 
         /**
          * Smtp Extension Settings
          */
         LOGGER.info(SmtpSyntax.LOG_TAB + "Smtp Extension Settings:");
-        this.enableChunking = configAccessor.getBoolean("chunking.enabled", true);
-        LOGGER.info(SmtpSyntax.LOG_TAB + "Chunking is " + (this.enableChunking ? "enabled" : "disabled"));
+        LOGGER.info(SmtpSyntax.LOG_TAB + "Chunking is " + (configAccessor.chunkingEnabled ? "enabled" : "disabled"));
         /**
          * {@link SmtpInputType#BINARYMIME} is not supported
          * because we can't test it,
@@ -116,25 +101,22 @@ public class SmtpService {
         /**
          * Pipelining
          */
-        this.enablePipelining = configAccessor.getBoolean("pipelining.enabled", true);
-        LOGGER.info(SmtpSyntax.LOG_TAB + "Pipelining is " + (this.enablePipelining ? "enabled" : "disabled"));
-
+        LOGGER.info(SmtpSyntax.LOG_TAB + "Pipelining is " + (configAccessor.pipeliningEnabled ? "enabled" : "disabled"));
 
         /**
          * Auth Settings
          */
-        this.authEnabled = configAccessor.getBoolean("auth.enabled", true);
-        LOGGER.info(SmtpSyntax.LOG_TAB + "Authentication is " + (this.authEnabled ? "enabled" : "disabled"));
-        this.authRequired = configAccessor.getBoolean("auth.required", false);
-        LOGGER.info(SmtpSyntax.LOG_TAB + "Authentication is " + (this.authRequired ? "required" : "optional"));
+        LOGGER.info(SmtpSyntax.LOG_TAB + "Authentication is " + (configAccessor.authEnabled ? "enabled" : "disabled"));
+        LOGGER.info(SmtpSyntax.LOG_TAB + "Authentication is " + (configAccessor.authRequired ? "required" : "optional"));
+
         /**
          * The Spf and dkim features are not yet implemented
          * They are then not enabled
          */
-        this.enableSpf = configAccessor.getBoolean("spf.enabled", false);
-        LOGGER.info(SmtpSyntax.LOG_TAB + "Spf is " + (this.enableSpf ? "enabled" : "disabled"));
-        this.enableDkim = configAccessor.getBoolean("dkim.enabled", false);
-        LOGGER.info(SmtpSyntax.LOG_TAB + "Dkim is " + (this.enableDkim ? "enabled" : "disabled"));
+        this.enableSpf = false;
+        LOGGER.info(SmtpSyntax.LOG_TAB + "Spf is disabled");
+        this.enableDkim = false;
+        LOGGER.info(SmtpSyntax.LOG_TAB + "Dkim is disabled");
 
 
     }
@@ -154,7 +136,7 @@ public class SmtpService {
                 List<Certificate> peerCerts = netSocket.peerCertificates();
                 LOGGER.fine("Peer Certificates: " + peerCerts.size());
             } catch (SSLPeerUnverifiedException e) {
-                if (this.requireValidPeerCertificate) {
+                if (this.config.requireValidPeerCertificate) {
                     String message = "Error unverified peer certificates";
                     LOGGER.log(Level.SEVERE, message, e);
                     netSocket.write(message);
@@ -217,7 +199,7 @@ public class SmtpService {
 
 
     public boolean isChunkingEnabled() {
-        return this.enableChunking;
+        return this.config.chunkingEnabled;
     }
 
     public boolean isBinaryMimeEnabled() {
@@ -225,7 +207,7 @@ public class SmtpService {
     }
 
     public boolean isPipeliningEnabled() {
-        return this.enablePipelining;
+        return this.config.pipeliningEnabled;
     }
 
 
@@ -234,11 +216,11 @@ public class SmtpService {
     }
 
     public boolean isAuthRequired() {
-        return this.authRequired;
+        return this.config.authRequired;
     }
 
     public boolean isAuthEnabled() {
-        return this.authEnabled;
+        return this.config.authEnabled;
     }
 
 
@@ -247,11 +229,11 @@ public class SmtpService {
      * SSL is too old, we don't use
      */
     public boolean getIsTlsEnabled() {
-        return this.tlsEnabled;
+        return this.config.tlsEnabled;
     }
 
     public boolean getIsSniEnabled() {
-        return this.sniEnabled;
+        return this.config.sniEnabled;
     }
 
     public int getListeningPort() {

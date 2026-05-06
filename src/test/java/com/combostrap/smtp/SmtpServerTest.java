@@ -54,7 +54,7 @@ class SmtpServerTest {
         vertx = Vertx.vertx();
         verticle = new SmtpVerticle();
         JsonObject verticleConfig = new JsonObject();
-        verticleConfig.put(SmtpServer.SESSION_REPLAY_CONF, false);
+        verticleConfig.put("sessionReplay", false);
         // delivery cannot be immediate otherwise the test will finish before delivery
         // why ? As the delivery is running, the delivery run is returning immediately
         verticleConfig.put(SmtpDelivery.DELIVERY_RUN_AFTER_RECEPTION_CONF, false);

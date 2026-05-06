@@ -1,9 +1,10 @@
-package com.combostrap.smtp;
+package com.combostrap.smtp.cli;
 
+import com.combostrap.smtp.SmtpConfigBean;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.github.victools.jsonschema.generator.*;
 
-public class SmtpConfigSchemaGenerator {
+public class SchemaCommand {
 
     public static void main(String[] args) {
 

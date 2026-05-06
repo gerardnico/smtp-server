@@ -1,22 +1,32 @@
 package com.combostrap.smtp;
 
+import com.combostrap.common.JavaEnvs;
+import com.combostrap.smtp.command.SmtpStartTlsCommandHandler;
 import com.combostrap.smtp.exceptions.ConfigIllegalException;
 import com.combostrap.type.CastException;
 import com.combostrap.type.Casts;
-import com.combostrap.vertx.ConfigManager;
-import com.combostrap.vertx.MainLauncher;
 import com.combostrap.vertx.VertxHttpServer;
 import com.combostrap.vertx.VertxNetServer;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.net.NetServer;
 import io.vertx.core.net.NetServerOptions;
 import io.vertx.core.net.PemKeyCertOptions;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
 
-
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -24,32 +34,57 @@ import java.util.logging.Logger;
 public class SmtpVerticle extends AbstractVerticle {
 
     private static final Logger LOGGER = Logger.getLogger(SmtpVerticle.class.getName());
-    private static final String APPLICATION_NAME = "smtp-server";
     private SmtpServer smtpServer;
 
-
-    public static void main(String[] args) {
-
-
-        new MainLauncher().dispatch(new String[]{"run", SmtpVerticle.class.getName()});
-
-    }
 
     @Override
     public void start(Promise<Void> verticlePromise) {
 
 
-        LOGGER.info("Smtp Verticle Started");
-        ConfigManager.config(APPLICATION_NAME, this.vertx, this.config())
-                .build()
-                .getConfigAccessor()
-                .onFailure(e -> this.handleVerticleFailure(verticlePromise, e))
-                .compose(configAccessor -> vertx.executeBlocking(() -> {
+        vertx.executeBlocking(() -> {
+
+                    ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+                    mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true);
+
+                    SmtpConfigBean smtpConfigBean;
+                    JsonObject config = this.config();
+                    if (config.isEmpty()) {
+                        String pathname = ".smtp-server.yml";
+                        File src = new File(pathname);
+                        try {
+                            smtpConfigBean = mapper.readValue(src, SmtpConfigBean.class);
+                        } catch (IOException e) {
+                            throw new RuntimeException("Error in the file "+pathname+". Error: "+e.getMessage(), e);
+                        }
+                    } else {
+                        /**
+                         * Used in test
+                         */
+                        smtpConfigBean = mapper.readValue(config.encode(), SmtpConfigBean.class);
+                    }
+
+
+                    if (JavaEnvs.isIsIdeDebugging()) { // sentinel check
+                        /**
+                         * One hour: used when debugging {@link SmtpStartTlsCommandHandler STARTTLS}
+                         * command
+                         */
+                        smtpConfigBean.limits.handShakeTimeoutSecond = 60 * 60;
+                    }
+
+                    try (ValidatorFactory validatorFactory = Validation.buildDefaultValidatorFactory()) {
+                        Validator validator = validatorFactory.getValidator();
+                        Set<ConstraintViolation<SmtpConfigBean>> violations = validator.validate(smtpConfigBean);
+                        if (!violations.isEmpty()) {
+                            violations.forEach(v -> System.out.println(v.getMessage()));
+                            throw new RuntimeException("Validation violation in the configuration file");
+                        }
+                    }
 
                     /**
                      * Smtp Server
                      */
-                    this.smtpServer = SmtpServer.create(this, configAccessor);
+                    this.smtpServer = SmtpServer.create(this, smtpConfigBean);
 
 
                     /**
@@ -132,10 +167,8 @@ public class SmtpVerticle extends AbstractVerticle {
                                 /**
                                  * HTTP Server for API and other HTTP request
                                  */
-                                String userAgentName = "smtp-server";
-                                VertxNetServer server = VertxNetServer.create("smtp", "smtp", vertx, configAccessor)
-                                        .setFromConfigAccessorWithPort(25026)
-                                        .enableSmtpClient(userAgentName)
+                                VertxNetServer server = VertxNetServer.create(vertx, smtpConfigBean)
+                                        .setFromConfigAccessorWithPort()
                                         .build();
                                 /**
                                  * Create the HTTP server
@@ -149,9 +182,8 @@ public class SmtpVerticle extends AbstractVerticle {
                                 return httpServer
                                         .mountListen("Smtp");
                             });
-                }))
+                })
                 .onFailure(e -> this.handleVerticleFailure(verticlePromise, e));
-
 
     }
 
