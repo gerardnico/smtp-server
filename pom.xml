@@ -97,7 +97,7 @@
             <version>9.1.0.Final</version>
             <scope>compile</scope>
         </dependency>
-        <!-- Required by Jakarta Validation -->
+        <!-- Required by Hibernate Validation -->
         <!-- https://docs.hibernate.org/validator/9.1/reference/en-US/html_single/#validator-gettingstarted-uel  -->
         <dependency>
             <groupId>org.glassfish.expressly</groupId>
